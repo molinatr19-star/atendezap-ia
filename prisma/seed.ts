@@ -7,6 +7,10 @@
  */
 import "dotenv/config";
 
+import { randomUUID } from "node:crypto";
+
+import { hashPassword } from "better-auth/crypto";
+
 import { DEMO_WORKSPACE_ID, DEMO_WORKSPACE_NAME } from "@/config/workspace";
 import { prisma } from "@/lib/db/prisma";
 import { generateAttendanceHistory } from "@/mocks/analytics";
@@ -25,12 +29,80 @@ const LEAD_VALUES: Record<string, number> = {
   "ct-08": 540_000,
 };
 
+/**
+ * Usuários de demonstração (senha "demo12345", exibida na tela de login).
+ * Domínio .example é reservado (RFC 2606): nunca corresponde a e-mails reais.
+ */
+const DEMO_USERS = [
+  { name: "Ana Souza", email: "ana@atendezap.example", role: "owner" },
+  { name: "Bruno Lima", email: "bruno@atendezap.example", role: "agent" },
+] as const;
+const DEMO_PASSWORD = "demo12345";
+
+/** Cria os usuários de demonstração que ainda não existem (credencial no formato do Better Auth). */
+async function ensureDemoUsers(): Promise<number> {
+  let created = 0;
+  for (const user of DEMO_USERS) {
+    if (await prisma.user.findUnique({ where: { email: user.email } })) continue;
+    const id = randomUUID();
+    await prisma.user.create({
+      data: {
+        id,
+        name: user.name,
+        email: user.email,
+        emailVerified: true,
+        role: user.role,
+        workspaceId: DEMO_WORKSPACE_ID,
+        accounts: {
+          create: {
+            id: randomUUID(),
+            providerId: "credential",
+            accountId: id,
+            // Mesmo algoritmo que o Better Auth usa no cadastro e confere no login.
+            password: await hashPassword(DEMO_PASSWORD),
+          },
+        },
+      },
+    });
+    created++;
+  }
+  return created;
+}
+
+/** Agente padrão da loja fictícia. Criado só se não existir (não sobrescreve edições na tela). */
+async function ensureDemoAgent(): Promise<boolean> {
+  const existing = await prisma.aiAgent.findUnique({ where: { workspaceId: DEMO_WORKSPACE_ID } });
+  if (existing) return false;
+  await prisma.aiAgent.create({
+    data: {
+      workspaceId: DEMO_WORKSPACE_ID,
+      name: "Aurora",
+      persona:
+        "Assistente da Casa Aurora: cordial, objetiva e prestativa. Trata o cliente pelo primeiro nome e evita gírias.",
+      instructions: [
+        "A Casa Aurora (empresa fictícia) faz móveis planejados: cozinhas, dormitórios, home office e salas.",
+        "Showroom: segunda a sexta, 9h às 18h; sábado, 9h às 14h. Endereço: Av. Exemplo, 1000 (fictício).",
+        "Visita técnica para medição é gratuita na Grande São Paulo; agende pedindo dia e período.",
+        "Orçamento: peça o ambiente e as medidas aproximadas. Não informe valores: a equipe envia a proposta.",
+        "Pagamento: até 10x sem juros no cartão (detalhes com a consultora).",
+      ].join("\n"),
+      handoffRules:
+        "Transfira quando o contato pedir um atendente, reclamar de entrega ou montagem, quiser negociar valores, cancelar, ou quando você não tiver a informação.",
+    },
+  });
+  return true;
+}
+
 async function main() {
   const reset = process.argv.includes("--reset");
   const existing = await prisma.workspace.findUnique({ where: { id: DEMO_WORKSPACE_ID } });
 
   if (existing && !reset) {
-    console.log("Banco já populado. Nada foi alterado.");
+    const created = await ensureDemoAgent();
+    const users = await ensureDemoUsers();
+    console.log("Banco já populado. Dados existentes não foram alterados.");
+    if (created) console.log("Agente de IA padrão criado.");
+    if (users) console.log(`${users} usuário(s) de demonstração criado(s).`);
     console.log("Para APAGAR os dados de demonstração e recriar: npm run db:reset-demo");
     return;
   }
@@ -44,97 +116,108 @@ async function main() {
   const inbox = buildDemoInbox(now);
   const history = generateAttendanceHistory(now);
 
-  await prisma.$transaction(async (tx) => {
-    await tx.workspace.create({ data: { id: DEMO_WORKSPACE_ID, name: DEMO_WORKSPACE_NAME } });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.workspace.create({ data: { id: DEMO_WORKSPACE_ID, name: DEMO_WORKSPACE_NAME } });
 
-    const stages = await Promise.all(
-      PIPELINE.map((name, position) =>
-        tx.pipelineStage.create({ data: { workspaceId: DEMO_WORKSPACE_ID, name, position } }),
-      ),
-    );
-    const stageByName = new Map(stages.map((stage) => [stage.name, stage.id]));
+      // Em sequência: uma transação usa uma única conexão; consultas em paralelo nela são inválidas.
+      const stageByName = new Map<string, string>();
+      for (const [position, name] of PIPELINE.entries()) {
+        const stage = await tx.pipelineStage.create({
+          data: { workspaceId: DEMO_WORKSPACE_ID, name, position },
+        });
+        stageByName.set(stage.name, stage.id);
+      }
 
-    for (const contact of inbox.contacts) {
-      await tx.contact.create({
-        data: {
-          id: contact.id,
-          workspaceId: DEMO_WORKSPACE_ID,
-          name: contact.name,
-          phoneE164: contact.phoneE164,
-          city: contact.city,
-          optIn: contact.optIn,
-          createdAt: new Date(contact.createdAt),
-          tags: {
-            connectOrCreate: contact.tags.map((name) => ({
-              where: { workspaceId_name: { workspaceId: DEMO_WORKSPACE_ID, name } },
-              create: { workspaceId: DEMO_WORKSPACE_ID, name },
-            })),
-          },
-        },
-      });
-    }
-
-    for (const conversation of inbox.conversations) {
-      const messages = inbox.messages.filter(
-        (message) => message.conversationId === conversation.id,
-      );
-      await tx.conversation.create({
-        data: {
-          id: conversation.id,
-          workspaceId: DEMO_WORKSPACE_ID,
-          contactId: conversation.contactId,
-          status: conversation.status,
-          assignee: conversation.assignee,
-          assignedUserName: conversation.assignedUserName,
-          unreadCount: conversation.unreadCount,
-          handoffReason: conversation.handoffReason,
-          lastMessageAt: new Date(conversation.lastMessageAt),
-          lastInboundAt: new Date(conversation.lastInboundAt),
-          createdAt: new Date(messages[0]?.createdAt ?? conversation.lastMessageAt),
-          messages: {
-            create: messages.map((message) => ({
-              direction: message.direction,
-              author: message.author,
-              content: message.content,
-              deliveryStatus: message.deliveryStatus,
-              createdAt: new Date(message.createdAt),
-            })),
-          },
-        },
-      });
-
-      // Lead no CRM para conversas com etapa definida.
-      const stageId = conversation.leadStage ? stageByName.get(conversation.leadStage) : undefined;
-      if (stageId) {
-        await tx.lead.create({
+      for (const contact of inbox.contacts) {
+        await tx.contact.create({
           data: {
+            id: contact.id,
             workspaceId: DEMO_WORKSPACE_ID,
-            contactId: conversation.contactId,
-            stageId,
-            valueCents: LEAD_VALUES[conversation.contactId],
+            name: contact.name,
+            phoneE164: contact.phoneE164,
+            city: contact.city,
+            optIn: contact.optIn,
+            createdAt: new Date(contact.createdAt),
+            tags: {
+              connectOrCreate: contact.tags.map((name) => ({
+                where: { workspaceId_name: { workspaceId: DEMO_WORKSPACE_ID, name } },
+                create: { workspaceId: DEMO_WORKSPACE_ID, name },
+              })),
+            },
           },
         });
       }
-    }
 
-    await tx.attendance.createMany({
-      data: history.map((record) => ({
-        workspaceId: DEMO_WORKSPACE_ID,
-        startedAt: new Date(record.startedAt),
-        resolvedAt: new Date(record.resolvedAt),
-        resolvedBy: record.resolvedBy,
-        firstResponseSeconds: record.firstResponseSeconds,
-        leadCreated: record.leadCreated,
-      })),
-    });
-  });
+      for (const conversation of inbox.conversations) {
+        const messages = inbox.messages.filter(
+          (message) => message.conversationId === conversation.id,
+        );
+        await tx.conversation.create({
+          data: {
+            id: conversation.id,
+            workspaceId: DEMO_WORKSPACE_ID,
+            contactId: conversation.contactId,
+            status: conversation.status,
+            assignee: conversation.assignee,
+            assignedUserName: conversation.assignedUserName,
+            unreadCount: conversation.unreadCount,
+            handoffReason: conversation.handoffReason,
+            lastMessageAt: new Date(conversation.lastMessageAt),
+            lastInboundAt: new Date(conversation.lastInboundAt),
+            createdAt: new Date(messages[0]?.createdAt ?? conversation.lastMessageAt),
+            messages: {
+              create: messages.map((message) => ({
+                direction: message.direction,
+                author: message.author,
+                content: message.content,
+                deliveryStatus: message.deliveryStatus,
+                createdAt: new Date(message.createdAt),
+              })),
+            },
+          },
+        });
 
+        // Lead no CRM para conversas com etapa definida.
+        const stageId = conversation.leadStage
+          ? stageByName.get(conversation.leadStage)
+          : undefined;
+        if (stageId) {
+          await tx.lead.create({
+            data: {
+              workspaceId: DEMO_WORKSPACE_ID,
+              contactId: conversation.contactId,
+              stageId,
+              valueCents: LEAD_VALUES[conversation.contactId],
+            },
+          });
+        }
+      }
+
+      await tx.attendance.createMany({
+        data: history.map((record) => ({
+          workspaceId: DEMO_WORKSPACE_ID,
+          startedAt: new Date(record.startedAt),
+          resolvedAt: new Date(record.resolvedAt),
+          resolvedBy: record.resolvedBy,
+          firstResponseSeconds: record.firstResponseSeconds,
+          leadCreated: record.leadCreated,
+        })),
+      });
+      // ~6 mil linhas: o limite padrão de 5 s de uma transação é curto demais para o seed.
+    },
+    { timeout: 60_000, maxWait: 10_000 },
+  );
+
+  await ensureDemoAgent();
+  await ensureDemoUsers();
+  const inWorkspace = { workspaceId: DEMO_WORKSPACE_ID };
   const counts = await Promise.all([
-    prisma.contact.count(),
-    prisma.conversation.count(),
-    prisma.message.count(),
-    prisma.lead.count(),
-    prisma.attendance.count(),
+    prisma.contact.count({ where: inWorkspace }),
+    prisma.conversation.count({ where: inWorkspace }),
+    prisma.message.count({ where: { conversation: inWorkspace } }),
+    prisma.lead.count({ where: inWorkspace }),
+    prisma.attendance.count({ where: inWorkspace }),
   ]);
   console.log(
     `Seed concluído: ${counts[0]} contatos, ${counts[1]} conversas, ${counts[2]} mensagens, ` +

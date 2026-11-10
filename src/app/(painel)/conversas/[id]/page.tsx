@@ -6,6 +6,7 @@ import { ConversationView } from "@/components/chat/ConversationView";
 import { ConversationViewSkeleton } from "@/components/chat/ConversationViewSkeleton";
 import { getConversationDetail } from "@/server/services/conversationService";
 import { getRequestTime } from "@/server/requestTime";
+import { requireUser } from "@/server/session";
 
 export const metadata: Metadata = { title: "Conversa" };
 
@@ -23,10 +24,18 @@ export default function ConversaPage({ params }: PageProps<"/conversas/[id]">) {
 
 async function ConversationContent({ params }: Pick<PageProps<"/conversas/[id]">, "params">) {
   const { id } = await params;
+  const user = await requireUser();
   const now = await getRequestTime();
-  const detail = await getConversationDetail(id);
+  const detail = await getConversationDetail(id, user.workspaceId);
   if (!detail) notFound();
 
   // key: ao trocar de conversa, o rascunho e a rolagem não "vazam" de uma para outra.
-  return <ConversationView key={detail.conversation.id} detail={detail} now={now} />;
+  return (
+    <ConversationView
+      key={detail.conversation.id}
+      detail={detail}
+      now={now}
+      operatorName={user.name}
+    />
+  );
 }

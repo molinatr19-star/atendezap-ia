@@ -33,6 +33,7 @@ Também tratar `GET` de verificação do webhook (`hub.mode`, `hub.verify_token`
 ## Handoff IA -> humano
 
 Transferir quando:
+
 - o contato pede um atendente;
 - o agente não tem informação suficiente ou a confiança é baixa;
 - assunto sensível (reclamação grave, cancelamento, pagamento, dados pessoais);

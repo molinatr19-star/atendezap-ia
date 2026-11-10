@@ -6,163 +6,113 @@ Diretrizes do projeto para o Claude Code. Complementa o `CLAUDE.md` global da Mo
 
 Projeto de **portfólio** inspirado em plataformas SaaS de atendimento automatizado via WhatsApp com IA. Não é produto comercial e não atende clientes reais.
 
-Módulos previstos:
+| Módulo        | Rota                     | Status                                                                   |
+| ------------- | ------------------------ | ------------------------------------------------------------------------ |
+| Login         | `/login`                 | Pronto (Better Auth, e-mail e senha, cadastro público desativado)        |
+| Dashboard     | `/dashboard`             | Pronto (métricas do banco, gráficos SVG acessíveis)                      |
+| Conversas     | `/conversas`             | Pronto (handoff IA/equipe, janela de 24 h, simulador de contato)         |
+| CRM (Kanban)  | `/crm`                   | Pronto (arrastar e soltar, teclado, "Mover para")                        |
+| Agentes de IA | `/agentes`               | Pronto (persona e regras; edição só para dono/admin)                     |
+| Configurações | `/configuracoes`         | Provisório                                                               |
+| Tempo real    | `/api/events`            | Pronto (SSE + PostgreSQL LISTEN/NOTIFY)                                  |
+| Webhook       | `/api/webhooks/whatsapp` | Não implementado (o ponto de entrada já existe: `receiveContactMessage`) |
 
-| Módulo | Rota | Descrição |
-|---|---|---|
-| Autenticação | `/(auth)` | Login e cadastro do operador/empresa |
-| Dashboard | `/dashboard` | Métricas de atendimento (volume, tempo de resposta, conversão, resolução pela IA) |
-| Conversas | `/conversas` | Caixa de entrada estilo WhatsApp, com handoff IA para humano |
-| CRM (Kanban) | `/crm` | Funil de leads em colunas, atualizado em tempo real |
-| Agentes de IA | `/agentes` | Configuração de agentes: persona, instruções, base de conhecimento, horários |
-| Configurações | `/configuracoes` | Conexão WhatsApp, equipe, etiquetas, integrações |
-| Webhook | `/api/webhooks/whatsapp` | Recebimento de mensagens e status |
-
-**Fase atual: Dashboard e Conversas persistidos em SQLite via Prisma** (ADR 0004; sem IA real, sem login, WhatsApp em modo simulado). CRM, Agentes e Configurações ainda são páginas provisórias. Não implementar lógica, telas ou integrações sem pedido explícito da Molina.
+Não implementar lógica, telas ou integrações sem pedido explícito da Molina. Publicação (deploy) está fora do escopo atual.
 
 ## 2. Stack
 
-| Camada | Tecnologia | Status |
-|---|---|---|
-| Framework | Next.js 16.4 (App Router, `cacheComponents`) + React 19.3 | instalado |
-| Linguagem | TypeScript em modo `strict` | instalado |
-| Estilo | Tailwind CSS 4 + componentes no padrão shadcn/ui (cva, clsx, tailwind-merge) | instalado |
-| Ícones | lucide-react | instalado |
-| Tema | `data-theme` no `<html>` + script inline (sem biblioteca) | instalado |
-| Gráficos | SVG próprio em `src/components/dashboard/` (ADR 0003); cores validadas pela skill `dataviz` | definido |
-| Kanban | dnd-kit | a confirmar |
-| Validação | Zod (entrada de API, formulários, variáveis de ambiente) | definido |
-| IA | Claude API (Anthropic SDK), modelo via variável de ambiente | definido |
-| WhatsApp | WhatsApp Cloud API oficial (Meta), com modo simulado | definido |
-| Banco de dados | SQLite (`prisma/dev.db`) + Prisma ORM 7.10.1 com `@prisma/adapter-better-sqlite3` (ADR 0004). Migrar para PostgreSQL ao publicar | instalado |
-| Tempo real | SSE, WebSocket ou Realtime do provedor do banco | a decidir |
-| Testes | Vitest (unidade) + Playwright (e2e) | a confirmar |
+| Camada    | Tecnologia                                                                                                       |
+| --------- | ---------------------------------------------------------------------------------------------------------------- |
+| Framework | Next.js 16.4 (App Router, `cacheComponents`) + React 19.3, TypeScript `strict`                                   |
+| Estilo    | Tailwind CSS 4, componentes no padrão shadcn/ui, lucide-react, tema por `data-theme`                             |
+| Banco     | PostgreSQL 17 (Docker Compose) + Prisma ORM 7.10.1 com `@prisma/adapter-pg` (ADR 0005)                           |
+| Auth      | Better Auth 1.7 (ADR 0007)                                                                                       |
+| IA        | Claude API via `@anthropic-ai/sdk`, padrão `claude-opus-5-5`, esforço `low`; motor simulado sem chave (ADR 0006) |
+| Kanban    | dnd-kit (core + sortable)                                                                                        |
+| Gráficos  | SVG próprio (ADR 0003), cores validadas pela skill `dataviz`                                                     |
+| Validação | Zod em toda borda (actions, formulários, env, saídas do modelo)                                                  |
+| Testes    | Vitest (unidade + integração no Postgres de teste) e Playwright (E2E); GitHub Actions                            |
 
-Itens "a decidir" ou "a confirmar" só mudam de status com uma ADR em [docs/decisoes/](docs/decisoes/).
+Versões do Prisma (CLI, client, adapter) ficam fixadas juntas. Mudança de stack só com ADR em [docs/decisoes/](docs/decisoes/).
 
 ## 3. Estrutura de pastas
 
 ```
 src/
-  app/              Rotas (App Router). (auth) e (painel) são route groups.
-    api/            Route handlers (webhooks, endpoints internos)
-  components/
-    ui/             Componentes base reutilizáveis (botão, card, input, badge)
-    layout/         Sidebar, header, shells de página
-    dashboard/      KPIs, gráficos, filtros de período
-    crm/            Quadro Kanban, colunas, cards de lead
-    chat/           Lista de conversas, balões, composer
-    agentes/        Formulários de configuração de agente
-  features/         Lógica por domínio (hooks + estado + chamadas) quando crescer além de um componente
-  lib/
-    ai/             Cliente da Claude API, prompts, ferramentas do agente
-    whatsapp/       Cliente da Cloud API, parser de webhook, modo simulado
-    db/             Conexão e schema do banco
-    utils/          Funções puras genéricas
+  app/              Rotas. (auth) = login; (painel) = área logada; api/ = auth e eventos SSE
+  components/       ui/, layout/, dashboard/, chat/, crm/, agentes/, auth/
+  features/         Regras puras por domínio (conversas/rules.ts, crm/board.ts...) + hooks
+  lib/              ai/ (motores, prompts), db/ (Prisma), auth.ts, utils/
   server/
-    services/       Regras de negócio (orquestram repositórios, IA e WhatsApp)
-    repositories/   Acesso a dados
-  hooks/            Hooks React compartilhados
-  types/            Tipos de domínio compartilhados
-  config/           Constantes, validação de env, navegação
-  mocks/            Dados fictícios para desenvolvimento e demonstração
-docs/               Arquitetura, modelo de dados, ADRs
-tests/              unit/ e e2e/
-.claude/            Agente e skills do projeto
+    actions/        Server Actions (validam sessão + Zod, chamam serviços, refresh())
+    services/       Regras de negócio; recebem workspaceId explícito (sem valor padrão)
+    repositories/   Prisma -> tipos de domínio; toda consulta filtra por workspaceId
+    realtime/       pg_notify (events.ts) e LISTEN compartilhado (listener.ts)
+    session.ts      requireUser() / getActionUser()
+  proxy.ts          Barreira rápida por cookie (NÃO é verificação de segurança)
+  mocks/            Dados fictícios usados só pelo seed
+prisma/             schema, migrations, seed.ts
+tests/              integration/ (Vitest + Postgres de teste), e2e/ (Playwright)
+docs/               arquitetura, modelo de dados, ADRs, screenshots
 ```
 
-Regras de dependência (de cima para baixo, nunca o inverso):
-`app` -> `components`/`features` -> `server/services` -> `server/repositories` e `lib/*`.
-Componentes de UI não acessam banco nem SDKs externos diretamente.
+Dependências: `app` -> `components`/`features` -> `server/actions` -> `server/services` -> `server/repositories` e `lib/*`.
 
-## 4. Modelo de dados (referência)
+## 4. Regras de segurança (obrigatórias)
 
-Entidades centrais, detalhadas em [docs/modelo-de-dados.md](docs/modelo-de-dados.md):
+- **Toda** Server Action, página com dados e rota de API valida a sessão no servidor (`src/server/session.ts`). O `proxy.ts` só checa se o cookie existe.
+- O `workspaceId` vem **sempre** da sessão, nunca do navegador. Serviços não têm workspace padrão: o compilador obriga a passar.
+- Alterar o agente de IA exige papel `owner` ou `admin` (verificado no servidor; a tela só reflete).
+- Redirecionamento pós-login só para caminhos internos (`features/auth/safeRedirect.ts`).
+- Saídas do modelo (argumentos de ferramentas) são validadas com Zod antes de executar; texto do contato é dado, não instrução.
+- Eventos em tempo real levam só ids e tipo, nunca conteúdo de mensagens. Logs não registram mensagens, chaves ou tokens.
+- `.env` nunca é versionado (`.env.example` documenta as variáveis). Ao receber uma chave de API, validar com uma chamada gratuita antes de salvar e nunca imprimi-la.
+- Limite de tentativas de login (Better Auth) fica ligado; só o servidor dos testes E2E usa `AUTH_RATE_LIMIT=disabled`.
 
-- `Workspace` — empresa/conta (base para multi-tenant).
-- `User` — operador humano, com papel (`owner`, `admin`, `agent`).
-- `WhatsAppChannel` — número conectado.
-- `Contact` — pessoa do outro lado (telefone em E.164).
-- `Conversation` — sessão de atendimento; status `open`, `pending`, `resolved`; responsável `ai` ou `human`.
-- `Message` — direção `inbound`/`outbound`, autor `contact`/`ai`/`user`, status de entrega.
-- `Lead` — oportunidade no CRM, ligada a um `Contact`.
-- `PipelineStage` — coluna do Kanban, com ordem.
-- `AiAgent` — persona, instruções, modelo, temperatura, regras de handoff.
-- `Tag` — etiquetas para contatos e conversas.
+## 5. Dados e testes
 
-Todas as entidades de negócio carregam `workspaceId`.
+- Somente dados fictícios (seed). Domínio de e-mail `.example` (reservado). Contas: `ana@atendezap.example` (dona) e `bruno@atendezap.example` (atendente), senha `demo12345`.
+- Nunca rodar `prisma migrate reset`, `db push --force-reset`/`--accept-data-loss` ou `npm run db:reset-demo` sem pedido explícito da Molina.
+- Testes usam o banco `atendezap_test` (trava em `tests/integration/guard.ts`: recusa qualquer banco que não termine em `_test`).
+- Testes **nunca** chamam a Claude API real: Vitest e Playwright forçam `ANTHROPIC_API_KEY=""` (motor simulado, sem custo).
+- Uma chamada real à API custa dinheiro da Molina: perguntar antes de testar com o motor real.
 
-## 5. Diretrizes de código
+## 6. Diretrizes de código e UI
 
-- Identificadores, nomes de arquivos de código e commits em **inglês**; textos de interface e documentação em **português do Brasil**.
-- Componentes em PascalCase (`LeadCard.tsx`); hooks com prefixo `use`; utilitários em camelCase.
-- Server Components por padrão; `"use client"` apenas quando houver estado, eventos ou APIs do navegador.
-- Sem `any`. Tipos de domínio em `src/types/`; tipos derivados de schemas Zod quando possível.
-- Validar toda entrada externa (webhook, formulário, query string) com Zod na borda.
-- Funções pequenas e com uma responsabilidade. Comentar o "porquê", não o "o quê".
-- Cada mudança relevante de arquitetura gera uma ADR curta em `docs/decisoes/NNNN-titulo.md`.
+- Código, nomes de arquivos e commits em inglês; interface e documentação em português do Brasil.
+- Server Components por padrão; `"use client"` só com estado, eventos ou APIs do navegador. Sem `any`.
+- Regras de negócio em funções puras compartilhadas entre servidor e atualização otimista (`useOptimistic`).
+- Estados obrigatórios: carregando, vazio, erro, sucesso e "Salvando…" enquanto o servidor confirma.
+- Acessibilidade: contraste AA, foco visível, teclado em tudo (inclusive Kanban), anúncios para leitor de tela.
+- Skills do projeto: `saas-ui`, `dashboard-analitico`, `fluxo-conversacional`. Agente: `atendezap-architect`.
 
-## 6. Diretrizes de UI (SaaS)
+## 7. Next.js 16 e bibliotecas: armadilhas já confirmadas
 
-- Layout de painel: sidebar fixa + header + área de conteúdo; responsivo até 360 px.
-- Tema claro e escuro via tokens (variáveis CSS mapeadas no Tailwind). Nada de cor solta no componente.
-- Estados obrigatórios em toda tela com dados: carregando (skeleton), vazio, erro e sucesso.
-- Acessibilidade: contraste AA, foco visível, navegação por teclado (inclusive no Kanban), `aria-*` nos componentes interativos.
-- Detalhes em `.claude/skills/saas-ui/SKILL.md` e `.claude/skills/dashboard-analitico/SKILL.md`.
+Consultar a doc local em `node_modules/next/dist/docs/` antes de escrever código de Next (ver `AGENTS.md`).
 
-## 7. Diretrizes de IA e WhatsApp
+- Leitura de banco/sessão em componente: dentro de `<Suspense>`; `getRequestTime()` chama `connection()`. `now` vai como prop aos componentes cliente (sem `Date.now()` no render).
+- `params`, `searchParams`, `usePathname`, `useSearchParams`, `useParams`: dentro de `<Suspense>`.
+- `error.tsx` recebe `{ error, retry }`. `notFound()` em conteúdo transmitido responde 200 + `noindex`.
+- Rotas ficam ocultas em `<Activity>` ao navegar: estados transitórios precisam ser fechados.
+- Após login, navegação completa (`window.location.assign`): o prefetch pode ter guardado respostas de antes do login.
+- Transação do Prisma usa uma conexão só: nada de `Promise.all` dentro de `$transaction`.
+- dnd-kit: setas entre colunas exigem o `coordinateGetter` próprio de `KanbanBoard.tsx`.
+- Cache do dev: ao mudar `@theme` no `globals.css`, parar o servidor e apagar `.next/dev`.
+- Vitest no Windows: rodar pelos scripts do npm (`scripts/vitest.mjs` corrige `c:` vs `C:`).
 
-- Usar apenas a **WhatsApp Cloud API oficial**. Não usar bibliotecas não oficiais que automatizam o WhatsApp Web (violam os termos e arriscam banimento do número).
-- Manter um **modo simulado** (`WHATSAPP_MODE=mock`) para desenvolvimento e demonstração do portfólio sem número real.
-- Webhook: verificar assinatura `X-Hub-Signature-256`, responder 200 rápido e processar de forma idempotente (deduplicar pelo id da mensagem).
-- Respeitar a janela de 24 h do WhatsApp: fora dela, só mensagens de template aprovadas.
-- Chave da Claude API e modelo vêm de variáveis de ambiente; nunca no código nem no cliente.
-- Toda chamada de IA roda no servidor. O agente sempre tem regra de handoff para humano (pedido explícito, baixa confiança, assunto sensível).
-- Prompts versionados em `src/lib/ai/`, não espalhados pelo código.
-- Detalhes em `.claude/skills/fluxo-conversacional/SKILL.md`.
+## 8. Comandos
 
-## 8. Segurança e dados
+| Comando                 | Uso                                                         |
+| ----------------------- | ----------------------------------------------------------- |
+| `docker compose up -d`  | Sobe o PostgreSQL (dev + banco de testes)                   |
+| `npm run dev`           | Servidor de desenvolvimento (http://localhost:3000)         |
+| `npm run check`         | typecheck + lint                                            |
+| `npm test`              | Vitest: unidade + integração                                |
+| `npm run test:e2e`      | Playwright (build + servidor na porta 3100, banco de teste) |
+| `npm run format`        | Prettier                                                    |
+| `npm run db:migrate`    | Cria/aplica migração após mudar o schema (dev)              |
+| `npm run db:seed`       | Popula o banco só se estiver vazio (seguro)                 |
+| `npm run db:reset-demo` | **Apaga** e recria a demonstração (só com pedido explícito) |
+| `npm run db:studio`     | Interface visual do banco                                   |
 
-- Somente dados fictícios em `src/mocks/` e no seed. Nenhum telefone ou conversa real no repositório.
-- O arquivo do banco (`prisma/*.db`) e o client gerado (`src/generated/`) não são versionados.
-- Nunca rodar `prisma migrate reset`, `db push --force-reset`/`--accept-data-loss` ou `npm run db:reset-demo` sem pedido explícito da Molina: apagam dados.
-- Para testes que alteram dados, usar uma cópia do banco (`DATABASE_URL="file:./prisma/test.db"`) e apagá-la depois.
-- `.env` nunca é versionado; `.env.example` documenta todas as variáveis.
-- Isolamento por `workspaceId` em toda consulta.
-- Não registrar conteúdo de mensagens nem tokens em logs.
-
-## 9. Fluxo de trabalho com o Claude
-
-- Agente do projeto: `atendezap-architect` (`.claude/agents/`). Usar para planejar módulos, revisar arquitetura e propor estrutura antes de codificar.
-- Skills do projeto: `saas-ui`, `dashboard-analitico`, `fluxo-conversacional`.
-- Antes de instalar dependências, confirmar com a Molina e registrar a decisão.
-- **Next.js 16 tem mudanças incompatíveis com versões anteriores.** Antes de escrever código de Next, consultar a doc local em `node_modules/next/dist/docs/` (ver `AGENTS.md`). Pontos já confirmados:
-  - `error.tsx` recebe `{ error: unknown, retry }`.
-  - `LayoutProps<"/rota">` e `PageProps<"/rota">` são globais (gerados por `next dev`/`build`/`typegen`).
-  - Com `cacheComponents`, rotas visitadas ficam ocultas em `<Activity>`: fechar menus/popovers ao navegar (`Link onNavigate`).
-  - `usePathname`/`useSearchParams`/`useParams` dentro de `<Suspense>`.
-  - Ler `params`/`searchParams` em página só dentro de `<Suspense>` (senão o dev acusa "instant-shell-url-data").
-  - `notFound()` dentro de conteúdo transmitido responde 200 + `noindex` (comportamento documentado).
-  - Leitura de banco em componente: sempre dentro de `<Suspense>` e depois de `await getRequestTime()` (`src/server/requestTime.ts`, que chama `connection()`). O driver SQLite é síncrono: sem isso a consulta roda no build e fica congelada. O `now` retornado é passado como prop aos componentes cliente.
-  - Escritas: Server Actions em `src/server/actions/` (validam com Zod, chamam o serviço e terminam com `refresh()`). Regras de negócio puras em `src/features/conversas/rules.ts`, usadas no servidor e na atualização otimista (`useOptimistic`).
-  - Prisma 7: client gerado em `src/generated/prisma` (importar de `@/generated/prisma/client`); rodar `npm run db:generate` após mudar o schema. Repositórios convertem linhas do Prisma em tipos de domínio (`src/types/`).
-  - **Cache do dev:** ao mudar o bloco `@theme` do `globals.css`, o servidor de dev pode manter o tema antigo. Parar o servidor, apagar `.next/dev` e iniciar de novo.
-
-## 10. Comandos
-
-| Comando | Uso |
-|---|---|
-| `npm run dev` | Servidor de desenvolvimento (http://localhost:3000) |
-| `npm run build` | Build de produção |
-| `npm run start` | Servir o build |
-| `npm run typecheck` | Checagem de tipos (`tsc --noEmit`) |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier (ordena classes Tailwind) |
-| `npm run check` | typecheck + lint |
-| `npm run db:migrate` | Cria/aplica migração após mudar `prisma/schema.prisma` (dev) |
-| `npm run db:generate` | Regenera o Prisma Client |
-| `npm run db:seed` | Popula o banco só se estiver vazio (seguro) |
-| `npm run db:reset-demo` | **Apaga** o workspace de demonstração e recria (só com pedido explícito) |
-| `npm run db:studio` | Interface visual do banco (Prisma Studio) |
-
-Rodar `npm run check` e `npm run build` antes de considerar uma etapa concluída.
+Antes de considerar uma etapa concluída: `npm run check`, `npm test`, `npm run build` e, se tocar em telas, `npm run test:e2e`.

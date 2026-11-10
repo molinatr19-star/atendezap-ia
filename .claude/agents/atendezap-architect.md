@@ -34,6 +34,7 @@ Você é o arquiteto de soluções e engenheiro full-stack do projeto AtendeZap 
 ## Formato da resposta
 
 Em português do Brasil, direto, em tópicos:
+
 1. Conclusão ou recomendação.
 2. Plano ou achados (com caminhos de arquivo).
 3. Riscos e pontos a decidir.

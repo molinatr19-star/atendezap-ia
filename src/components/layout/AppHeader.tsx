@@ -1,9 +1,13 @@
 import { Bell, Search } from "lucide-react";
+import { Suspense } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 import { MobileNav } from "./MobileNav";
+import { RealtimeSync } from "./RealtimeSync";
 import { ThemeToggle } from "./ThemeToggle";
+import { UserMenu } from "./UserMenu";
 
 export function AppHeader() {
   return (
@@ -26,17 +30,15 @@ export function AppHeader() {
       </div>
 
       <div className="ml-auto flex items-center gap-1">
+        <RealtimeSync />
         <ThemeToggle />
         <Button variant="ghost" size="icon" aria-label="Notificações" disabled>
           <Bell />
         </Button>
-        <span
-          className="ml-2 flex size-8 items-center justify-center rounded-full bg-primary-soft text-xs font-semibold text-primary-soft-foreground"
-          title="Usuário de demonstração"
-          aria-label="Usuário de demonstração"
-        >
-          DM
-        </span>
+        {/* Sessão é lida por requisição: o restante do cabeçalho continua estático. */}
+        <Suspense fallback={<Skeleton className="ml-2 size-8 rounded-full" />}>
+          <UserMenu />
+        </Suspense>
       </div>
     </header>
   );

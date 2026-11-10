@@ -1,45 +1,51 @@
 # Arquitetura
 
-> Documento vivo. Atualizar a cada decisão registrada em `docs/decisoes/`.
+> Documento vivo. Decisões detalhadas em `docs/decisoes/` (ADRs 0001 a 0007).
 
-## Visão geral
+## Fluxo de uma mensagem do contato
 
 ```
-WhatsApp (contato)
+Contato (WhatsApp)                       Hoje: simulador no painel
+      |                                   Futuro: webhook da Cloud API
+      v
+receiveContactMessage  (server/services/inboundService.ts)
+  1. valida o texto (Zod)
+  2. grava a mensagem, renova a janela de 24 h, reabre se estava resolvida
+  3. se a IA conduz a conversa e o agente está ativo:
+       runAgentReply  (server/services/agentService.ts)
+         - monta o prompt a partir da configuração em /agentes
+         - motor Claude (com chave) ou simulado (sem chave)
+         - ferramentas executadas pelo serviço: transferir, mover lead, etiquetar
+         - falha ou recusa da IA => transfere para a equipe
+  4. pg_notify("atendezap_events", { workspaceId, tipo, conversationId })
       |
       v
-WhatsApp Cloud API ──webhook──> /api/webhooks/whatsapp
-                                       |
-                                       v
-                           server/services/inbound
-                           (valida, deduplica, salva)
-                                       |
-                 ┌─────────────────────┴─────────────────────┐
-                 v                                           v
-      Conversa com responsável = ai               Conversa com responsável = human
-                 |                                           |
-      lib/ai (Claude API + ferramentas)          Notifica painel (tempo real)
-                 |                                           |
-      Resposta ou handoff  ───────────────>  Operador responde em /conversas
-                 |
-      lib/whatsapp (envio) ──> WhatsApp Cloud API ──> contato
-
-Eventos (nova mensagem, mudança de etapa) ──> painel: /conversas, /crm, /dashboard
+Processo do Next (LISTEN compartilhado) --SSE /api/events--> abas do mesmo workspace
+      |
+      v
+router.refresh(): lista, chat, Kanban e dashboard relidos com a sessão de cada usuário
 ```
 
 ## Camadas
 
-| Camada | Pasta | Responsabilidade |
-|---|---|---|
-| Apresentação | `src/app`, `src/components` | Rotas, layouts e componentes |
-| Domínio de UI | `src/features`, `src/hooks` | Estado e lógica por módulo |
-| Aplicação | `src/server/services` | Casos de uso e regras de negócio |
-| Dados | `src/server/repositories`, `src/lib/db` | Persistência |
-| Integrações | `src/lib/ai`, `src/lib/whatsapp` | SDKs e APIs externas |
+| Camada       | Pasta                                                  | Responsabilidade                                       |
+| ------------ | ------------------------------------------------------ | ------------------------------------------------------ |
+| Apresentação | `src/app`, `src/components`                            | Rotas, layouts, componentes (Server por padrão)        |
+| Regras puras | `src/features`                                         | Regras compartilhadas por servidor e UI otimista       |
+| Entrada      | `src/server/actions`, `src/app/api`                    | Sessão, validação Zod, chamada ao serviço, `refresh()` |
+| Aplicação    | `src/server/services`                                  | Casos de uso; workspace sempre explícito               |
+| Dados        | `src/server/repositories`, `src/lib/db`                | Prisma -> tipos de domínio, filtro por workspace       |
+| Integrações  | `src/lib/ai`, `src/lib/auth.ts`, `src/server/realtime` | Claude API, Better Auth, LISTEN/NOTIFY                 |
+
+## Segurança em camadas
+
+1. `proxy.ts`: sem cookie de sessão, redireciona ao login (rápido, não é verificação real).
+2. Páginas: `requireUser()` valida a sessão no banco antes de ler dados.
+3. Server Actions e rotas: `getActionUser()`; sem sessão, erro. O workspace vem da sessão.
+4. Repositórios: toda consulta e escrita filtra por `workspaceId`.
 
 ## Pontos em aberto
 
-- Banco de dados e ORM.
-- Mecanismo de tempo real.
-- Provedor de autenticação.
-- Hospedagem (ex.: Vercel + banco gerenciado).
+- Webhook real da WhatsApp Cloud API (assinatura `X-Hub-Signature-256`, idempotência por `externalId`).
+- Gestão de equipe pela tela (convites, papéis) e recuperação de senha.
+- Hospedagem (fora do escopo atual).

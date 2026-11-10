@@ -1,4 +1,3 @@
-import { DEMO_WORKSPACE_ID } from "@/config/workspace";
 import { periodDays } from "@/features/dashboard/period";
 import { DAY_MS, localDayKey, startOfLocalDay } from "@/lib/utils/time";
 import { analyticsRepository } from "@/server/repositories/analyticsRepository";
@@ -128,7 +127,7 @@ async function buildPending(workspaceId: string): Promise<PendingConversationRow
 export async function getDashboardMetrics(
   period: PeriodKey,
   now: number,
-  workspaceId: string = DEMO_WORKSPACE_ID,
+  workspaceId: string,
 ): Promise<DashboardMetrics> {
   const days = periodDays(period);
   const tomorrowStart = startOfLocalDay(now) + DAY_MS;

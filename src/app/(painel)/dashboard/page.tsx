@@ -14,6 +14,7 @@ import { getNavItem } from "@/config/navigation";
 import { parsePeriod } from "@/features/dashboard/period";
 import { getDashboardMetrics } from "@/server/services/metricsService";
 import { getRequestTime } from "@/server/requestTime";
+import { requireUser } from "@/server/session";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -35,8 +36,9 @@ export default function DashboardPage({ searchParams }: PageProps<"/dashboard">)
 
 async function DashboardContent({ searchParams }: Pick<PageProps<"/dashboard">, "searchParams">) {
   const period = parsePeriod((await searchParams).periodo);
+  const user = await requireUser();
   const now = await getRequestTime();
-  const metrics = await getDashboardMetrics(period, now);
+  const metrics = await getDashboardMetrics(period, now, user.workspaceId);
   const comparisonLabel = `vs. ${metrics.periodDays} dias anteriores`;
 
   return (

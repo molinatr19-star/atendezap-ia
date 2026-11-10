@@ -1,21 +1,21 @@
 # Modelo de dados (rascunho conceitual)
 
-> Modelo conceitual. O schema implementado está em `prisma/schema.prisma` (ADR 0004). Diferenças: `User` e `WhatsAppChannel` ainda não existem (sem login e sem número real); foi criada a entidade `Attendance` (atendimento encerrado: início, fim, quem resolveu, tempo da 1ª resposta, se gerou lead), que alimenta o dashboard.
+> Modelo conceitual. O schema implementado está em `prisma/schema.prisma` (ADRs 0005 a 0007). Diferenças: `WhatsAppChannel` ainda não existe (sem número real); `User` segue o formato do Better Auth (com `workspaceId` e `role`); foram criadas `AiAgent` e `Attendance` (atendimento encerrado: início, fim, quem resolveu, tempo da 1ª resposta, se gerou lead), que alimenta o dashboard.
 
 ## Entidades
 
-| Entidade | Campos principais | Observações |
-|---|---|---|
-| Workspace | id, name, plan, createdAt | Raiz do multi-tenant |
-| User | id, workspaceId, name, email, role | role: owner, admin, agent |
-| WhatsAppChannel | id, workspaceId, phoneNumberId, displayPhone, status | Um workspace pode ter vários números |
-| Contact | id, workspaceId, phoneE164, name, tags, optIn | Telefone sempre em E.164 |
-| Conversation | id, workspaceId, contactId, channelId, status, assignee, assignedUserId, lastMessageAt, windowExpiresAt | status: open, pending, resolved. assignee: ai, human |
-| Message | id, conversationId, externalId, direction, author, type, content, deliveryStatus, createdAt | externalId único (idempotência do webhook) |
-| Lead | id, workspaceId, contactId, stageId, value, ownerId, position | position ordena o card na coluna |
-| PipelineStage | id, workspaceId, name, order, color | Colunas do Kanban |
-| AiAgent | id, workspaceId, name, persona, instructions, model, temperature, handoffRules, active | Configurado em /agentes |
-| Tag | id, workspaceId, name, color | Aplicada a contatos e conversas |
+| Entidade        | Campos principais                                                                                       | Observações                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Workspace       | id, name, plan, createdAt                                                                               | Raiz do multi-tenant                                 |
+| User            | id, workspaceId, name, email, role                                                                      | role: owner, admin, agent                            |
+| WhatsAppChannel | id, workspaceId, phoneNumberId, displayPhone, status                                                    | Um workspace pode ter vários números                 |
+| Contact         | id, workspaceId, phoneE164, name, tags, optIn                                                           | Telefone sempre em E.164                             |
+| Conversation    | id, workspaceId, contactId, channelId, status, assignee, assignedUserId, lastMessageAt, windowExpiresAt | status: open, pending, resolved. assignee: ai, human |
+| Message         | id, conversationId, externalId, direction, author, type, content, deliveryStatus, createdAt             | externalId único (idempotência do webhook)           |
+| Lead            | id, workspaceId, contactId, stageId, value, ownerId, position                                           | position ordena o card na coluna                     |
+| PipelineStage   | id, workspaceId, name, order, color                                                                     | Colunas do Kanban                                    |
+| AiAgent         | id, workspaceId, name, persona, instructions, model, temperature, handoffRules, active                  | Configurado em /agentes                              |
+| Tag             | id, workspaceId, name, color                                                                            | Aplicada a contatos e conversas                      |
 
 ## Relacionamentos
 

@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils/cn";
 import type { ConversationDetail } from "@/types/domain";
 
 import { Composer } from "./Composer";
+import { ContactSimulator } from "./ContactSimulator";
 import { ContactPanel } from "./ContactPanel";
 import { AssigneeBadge, StatusBadge } from "./ConversationBadges";
 import { MessageList } from "./MessageList";
@@ -20,9 +21,11 @@ type ConversationViewProps = {
   detail: ConversationDetail;
   /** Hora da requisição, calculada no servidor. */
   now: number;
+  /** Nome do usuário logado (vira o responsável ao assumir). */
+  operatorName: string;
 };
 
-export function ConversationView({ detail, now }: ConversationViewProps) {
+export function ConversationView({ detail, now, operatorName }: ConversationViewProps) {
   const {
     conversation,
     contact,
@@ -37,7 +40,7 @@ export function ConversationView({ detail, now }: ConversationViewProps) {
     returnToAi,
     resolve,
     reopen,
-  } = useConversation(detail, now);
+  } = useConversation(detail, now, operatorName);
   const resolved = conversation.status === "resolved";
 
   return (
@@ -94,6 +97,9 @@ export function ConversationView({ detail, now }: ConversationViewProps) {
                 Resolver
               </Button>
             )}
+            <span role="status" className="text-xs text-muted-foreground">
+              {isPending ? "Salvando…" : ""}
+            </span>
           </div>
         </header>
 
@@ -127,6 +133,12 @@ export function ConversationView({ detail, now }: ConversationViewProps) {
         ) : null}
 
         <MessageList messages={messages} now={now} />
+
+        <ContactSimulator
+          conversationId={conversation.id}
+          contactName={contact.name.split(" ")[0]}
+          aiActive={conversation.assignee === "ai" && !resolved}
+        />
 
         <Composer
           blockReason={sendBlockReason}

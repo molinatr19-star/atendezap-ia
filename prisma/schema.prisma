@@ -1,4 +1,4 @@
-// Schema do AtendeZap IA (Prisma ORM 7 + SQLite).
+// Schema do AtendeZap IA (Prisma ORM 7 + PostgreSQL).
 // Modelo conceitual em docs/modelo-de-dados.md. Toda entidade de negócio carrega workspaceId.
 
 generator client {
@@ -7,10 +7,11 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
-// SQLite guarda enums como texto (não valida no banco); o Prisma valida na aplicação.
+// No PostgreSQL os enums são tipos nativos: o próprio banco rejeita valores inválidos.
+
 enum ConversationStatus {
   open
   pending
@@ -51,6 +52,26 @@ model Workspace {
   pipelineStages PipelineStage[]
   leads          Lead[]
   attendances    Attendance[]
+  aiAgent        AiAgent?
+  users          User[]
+}
+
+/// Configuração do agente de IA do workspace (tela /agentes). Um agente por workspace.
+
+model AiAgent {
+  id           String   @id @default(cuid())
+  workspaceId  String   @unique
+  name         String
+  /// Quem o agente é e como fala (tom de voz).
+  persona      String
+  /// O que ele sabe e deve fazer: produtos, horários, políticas.
+  instructions String
+  /// Quando transferir para a equipe humana.
+  handoffRules String
+  active       Boolean  @default(true)
+  updatedAt    DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model Contact {
@@ -142,6 +163,8 @@ model Lead {
   stageId     String
   /// Valor estimado em centavos (evita erro de arredondamento com dinheiro).
   valueCents  Int?
+  /// Ordem do card dentro da coluna do Kanban (0 = topo).
+  position    Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -149,11 +172,12 @@ model Lead {
   contact   Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
   stage     PipelineStage @relation(fields: [stageId], references: [id])
 
-  @@index([workspaceId, stageId])
+  @@index([workspaceId, stageId, position])
 }
 
 /// Atendimento encerrado: base das métricas do dashboard.
 /// Registros históricos do seed não têm conversa vinculada.
+
 model Attendance {
   id                   String   @id @default(cuid())
   workspaceId          String
@@ -168,4 +192,72 @@ model Attendance {
   conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, startedAt])
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  workspaceId   String
+  /// owner | admin | agent (validado pelo Better Auth; String para compatibilidade com o CLI)
+  role          String    @default("agent")
+  sessions      Session[]
+  accounts      Account[]
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([email])
+  @@index([workspaceId])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
 }

@@ -1,4 +1,3 @@
-import { DEMO_OPERATOR_NAME, DEMO_WORKSPACE_ID } from "@/config/workspace";
 import { outgoingMessageSchema } from "@/features/conversas/messageSchema";
 import {
   applyCommand,
@@ -6,6 +5,7 @@ import {
   SEND_BLOCK_MESSAGES,
   type ConversationCommand,
 } from "@/features/conversas/rules";
+import { publishEvent } from "@/server/realtime/events";
 import { analyticsRepository } from "@/server/repositories/analyticsRepository";
 import { conversationRepository } from "@/server/repositories/conversationRepository";
 import type { Conversation, ConversationDetail, ConversationSummary } from "@/types/domain";
@@ -17,14 +17,14 @@ export class ConversationRuleError extends Error {}
 
 /** Caixa de entrada ordenada pela mensagem mais recente. */
 export async function listConversationSummaries(
-  workspaceId: string = DEMO_WORKSPACE_ID,
+  workspaceId: string,
 ): Promise<ConversationSummary[]> {
   return conversationRepository.listSummaries(workspaceId);
 }
 
 export async function getConversationDetail(
   id: string,
-  workspaceId: string = DEMO_WORKSPACE_ID,
+  workspaceId: string,
 ): Promise<ConversationDetail | undefined> {
   return conversationRepository.findDetail(workspaceId, id);
 }
@@ -71,14 +71,16 @@ async function recordAttendance(conversation: Conversation, resolvedAt: Date): P
 export async function runConversationCommand(
   id: string,
   command: ConversationCommand,
-  workspaceId: string = DEMO_WORKSPACE_ID,
+  workspaceId: string,
+  /** Nome do usuário logado: vira o responsável ao assumir a conversa. */
+  operatorName: string,
 ): Promise<void> {
   const current = await loadConversation(workspaceId, id);
 
   if (command.type === "resolve" && current.status === "resolved") return;
   if (command.type === "reopen" && current.status !== "resolved") return;
 
-  const next = applyCommand(current, command, DEMO_OPERATOR_NAME);
+  const next = applyCommand(current, command, operatorName);
   await conversationRepository.updateState(workspaceId, id, {
     status: next.status,
     assignee: next.assignee,
@@ -89,12 +91,13 @@ export async function runConversationCommand(
   if (command.type === "resolve") await recordAttendance(next, new Date());
   // Reaberta: o atendimento deixa de contar como encerrado até ser resolvido de novo.
   if (command.type === "reopen") await analyticsRepository.deleteForConversation(id);
+  await publishEvent({ workspaceId, type: "conversation.updated", conversationId: id });
 }
 
 export async function sendOperatorMessage(
   id: string,
   text: string,
-  workspaceId: string = DEMO_WORKSPACE_ID,
+  workspaceId: string,
 ): Promise<void> {
   const parsed = outgoingMessageSchema.safeParse(text);
   if (!parsed.success) {
@@ -108,4 +111,5 @@ export async function sendOperatorMessage(
   if (blockReason) throw new ConversationRuleError(SEND_BLOCK_MESSAGES[blockReason]);
 
   await conversationRepository.appendOperatorMessage(workspaceId, id, parsed.data, now);
+  await publishEvent({ workspaceId, type: "message.created", conversationId: id });
 }

@@ -2,7 +2,6 @@
 
 import { useOptimistic, useState, useTransition } from "react";
 
-import { DEMO_OPERATOR_NAME } from "@/config/workspace";
 import {
   reopenConversation,
   resolveConversation,
@@ -22,11 +21,15 @@ type OptimisticView = { conversation: Conversation; messages: Message[] };
 type OptimisticUpdate =
   { kind: "command"; command: ConversationCommand } | { kind: "message"; message: Message };
 
-function reduceOptimistic(view: OptimisticView, update: OptimisticUpdate): OptimisticView {
+function reduceOptimistic(
+  view: OptimisticView,
+  update: OptimisticUpdate,
+  operatorName: string,
+): OptimisticView {
   if (update.kind === "command") {
     return {
       ...view,
-      conversation: applyCommand(view.conversation, update.command, DEMO_OPERATOR_NAME),
+      conversation: applyCommand(view.conversation, update.command, operatorName),
     };
   }
   return {
@@ -43,11 +46,11 @@ function reduceOptimistic(view: OptimisticView, update: OptimisticUpdate): Optim
  *
  * `now` vem do servidor (hora da requisição) para servidor e navegador renderizarem igual.
  */
-export function useConversation(detail: ConversationDetail, now: number) {
+export function useConversation(detail: ConversationDetail, now: number, operatorName: string) {
   const id = detail.conversation.id;
   const [view, addOptimistic] = useOptimistic<OptimisticView, OptimisticUpdate>(
     { conversation: detail.conversation, messages: detail.messages },
-    reduceOptimistic,
+    (state, update) => reduceOptimistic(state, update, operatorName),
   );
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);

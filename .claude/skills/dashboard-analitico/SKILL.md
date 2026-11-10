@@ -18,25 +18,25 @@ Responder em poucos segundos: "Como está o atendimento e o funil agora, e compa
 
 ## KPIs sugeridos
 
-| KPI | Cálculo | Formato |
-|---|---|---|
-| Conversas abertas | count(status = open) | inteiro |
-| Tempo médio da 1ª resposta | média(1ª outbound − 1ª inbound) | mm:ss |
-| Resolvidas pela IA | resolvidas sem handoff / resolvidas | % |
-| Novos leads | count(Lead criado no período) | inteiro |
-| Taxa de conversão | leads na etapa final / leads criados | % |
-| Mensagens | count(Message) | inteiro |
+| KPI                        | Cálculo                              | Formato |
+| -------------------------- | ------------------------------------ | ------- |
+| Conversas abertas          | count(status = open)                 | inteiro |
+| Tempo médio da 1ª resposta | média(1ª outbound − 1ª inbound)      | mm:ss   |
+| Resolvidas pela IA         | resolvidas sem handoff / resolvidas  | %       |
+| Novos leads                | count(Lead criado no período)        | inteiro |
+| Taxa de conversão          | leads na etapa final / leads criados | %       |
+| Mensagens                  | count(Message)                       | inteiro |
 
 Cada KPI mostra valor atual, variação vs. período anterior (com seta e cor semântica) e tooltip com a definição.
 
 ## Gráficos
 
-| Pergunta | Tipo |
-|---|---|
-| Volume ao longo do tempo | linha ou área |
-| Distribuição por hora do dia | barras ou heatmap |
-| Funil por etapa | barras horizontais (funil) |
-| IA vs. humano | barras empilhadas ou rosca (no máx. 4 fatias) |
+| Pergunta                     | Tipo                                          |
+| ---------------------------- | --------------------------------------------- |
+| Volume ao longo do tempo     | linha ou área                                 |
+| Distribuição por hora do dia | barras ou heatmap                             |
+| Funil por etapa              | barras horizontais (funil)                    |
+| IA vs. humano                | barras empilhadas ou rosca (no máx. 4 fatias) |
 
 Regras: eixo Y começa em zero em barras; legenda só quando há mais de uma série; paleta vinda dos tokens; testar no tema escuro.
 
