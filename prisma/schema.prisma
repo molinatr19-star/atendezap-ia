@@ -160,6 +160,8 @@ model Lead {
   stageId     String
   /// Valor estimado em centavos (evita erro de arredondamento com dinheiro).
   valueCents  Int?
+  /// Ordem do card dentro da coluna do Kanban (0 = topo).
+  position    Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -167,7 +169,7 @@ model Lead {
   contact   Contact       @relation(fields: [contactId], references: [id], onDelete: Cascade)
   stage     PipelineStage @relation(fields: [stageId], references: [id])
 
-  @@index([workspaceId, stageId])
+  @@index([workspaceId, stageId, position])
 }
 
 /// Atendimento encerrado: base das métricas do dashboard.

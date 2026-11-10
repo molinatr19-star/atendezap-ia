@@ -18,7 +18,8 @@ test.describe("Caixa de entrada", () => {
     await page.getByRole("button", { name: "Resolver" }).click();
     await expect(page.getByText("Conversa resolvida.")).toBeVisible();
 
-    // Recarregar a página: os dados vêm do banco, não do estado do navegador.
+    // Espera o servidor confirmar e recarrega: os dados vêm do banco, não do navegador.
+    await expect(page.getByRole("status").filter({ hasText: "Salvando…" })).toHaveCount(0);
     await page.reload();
     await expect(page.getByRole("log").getByText(message)).toBeVisible();
     await expect(page.getByText("Conversa resolvida.")).toBeVisible();

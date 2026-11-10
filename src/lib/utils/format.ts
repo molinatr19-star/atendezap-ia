@@ -41,6 +41,17 @@ export function formatInteger(value: number): string {
   return integerFormat.format(Math.round(value));
 }
 
+const currencyFormat = new Intl.NumberFormat(LOCALE, {
+  style: "currency",
+  currency: "BRL",
+  maximumFractionDigits: 0,
+});
+
+/** Centavos -> "R$ 18.500" (sem centavos: o Kanban mostra valores estimados). */
+export function formatCurrencyCents(cents: number): string {
+  return currencyFormat.format(cents / 100);
+}
+
 /** Para eixos: 1.200 -> "1,2 mil". */
 export function formatCompact(value: number): string {
   return value < 10_000 ? integerFormat.format(value) : compactFormat.format(value);

@@ -95,6 +95,9 @@ export function ConversationView({ detail, now }: ConversationViewProps) {
                 Resolver
               </Button>
             )}
+            <span role="status" className="text-xs text-muted-foreground">
+              {isPending ? "Salvando…" : ""}
+            </span>
           </div>
         </header>
 
