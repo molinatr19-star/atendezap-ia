@@ -21,9 +21,11 @@ type ConversationViewProps = {
   detail: ConversationDetail;
   /** Hora da requisição, calculada no servidor. */
   now: number;
+  /** Nome do usuário logado (vira o responsável ao assumir). */
+  operatorName: string;
 };
 
-export function ConversationView({ detail, now }: ConversationViewProps) {
+export function ConversationView({ detail, now, operatorName }: ConversationViewProps) {
   const {
     conversation,
     contact,
@@ -38,7 +40,7 @@ export function ConversationView({ detail, now }: ConversationViewProps) {
     returnToAi,
     resolve,
     reopen,
-  } = useConversation(detail, now);
+  } = useConversation(detail, now, operatorName);
   const resolved = conversation.status === "resolved";
 
   return (

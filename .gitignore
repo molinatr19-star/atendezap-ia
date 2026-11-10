@@ -52,3 +52,6 @@ prisma/*.db-wal
 prisma/*.db-shm
 src/generated/
 .vscode/
+
+# Sessões salvas pelos testes E2E
+playwright/.auth/

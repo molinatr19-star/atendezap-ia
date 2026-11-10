@@ -7,6 +7,10 @@
  */
 import "dotenv/config";
 
+import { randomUUID } from "node:crypto";
+
+import { hashPassword } from "better-auth/crypto";
+
 import { DEMO_WORKSPACE_ID, DEMO_WORKSPACE_NAME } from "@/config/workspace";
 import { prisma } from "@/lib/db/prisma";
 import { generateAttendanceHistory } from "@/mocks/analytics";
@@ -24,6 +28,46 @@ const LEAD_VALUES: Record<string, number> = {
   "ct-07": 1_300_000,
   "ct-08": 540_000,
 };
+
+/**
+ * Usuários de demonstração (senha "demo12345", exibida na tela de login).
+ * Domínio .example é reservado (RFC 2606): nunca corresponde a e-mails reais.
+ */
+const DEMO_USERS = [
+  { name: "Ana Souza", email: "ana@atendezap.example", role: "owner" },
+  { name: "Bruno Lima", email: "bruno@atendezap.example", role: "agent" },
+] as const;
+const DEMO_PASSWORD = "demo12345";
+
+/** Cria os usuários de demonstração que ainda não existem (credencial no formato do Better Auth). */
+async function ensureDemoUsers(): Promise<number> {
+  let created = 0;
+  for (const user of DEMO_USERS) {
+    if (await prisma.user.findUnique({ where: { email: user.email } })) continue;
+    const id = randomUUID();
+    await prisma.user.create({
+      data: {
+        id,
+        name: user.name,
+        email: user.email,
+        emailVerified: true,
+        role: user.role,
+        workspaceId: DEMO_WORKSPACE_ID,
+        accounts: {
+          create: {
+            id: randomUUID(),
+            providerId: "credential",
+            accountId: id,
+            // Mesmo algoritmo que o Better Auth usa no cadastro e confere no login.
+            password: await hashPassword(DEMO_PASSWORD),
+          },
+        },
+      },
+    });
+    created++;
+  }
+  return created;
+}
 
 /** Agente padrão da loja fictícia. Criado só se não existir (não sobrescreve edições na tela). */
 async function ensureDemoAgent(): Promise<boolean> {
@@ -55,8 +99,10 @@ async function main() {
 
   if (existing && !reset) {
     const created = await ensureDemoAgent();
+    const users = await ensureDemoUsers();
     console.log("Banco já populado. Dados existentes não foram alterados.");
     if (created) console.log("Agente de IA padrão criado.");
+    if (users) console.log(`${users} usuário(s) de demonstração criado(s).`);
     console.log("Para APAGAR os dados de demonstração e recriar: npm run db:reset-demo");
     return;
   }
@@ -164,6 +210,7 @@ async function main() {
   );
 
   await ensureDemoAgent();
+  await ensureDemoUsers();
   const inWorkspace = { workspaceId: DEMO_WORKSPACE_ID };
   const counts = await Promise.all([
     prisma.contact.count({ where: inWorkspace }),

@@ -24,12 +24,12 @@ describe("comandos do operador", () => {
   it("assumir transfere para a equipe e zera não lidas", async () => {
     await createConversation({ assignee: "ai" });
 
-    await runConversationCommand("cv-test", { type: "takeOver" }, WS);
+    await runConversationCommand("cv-test", { type: "takeOver" }, WS, "Ana Teste");
 
     const saved = await prisma.conversation.findUniqueOrThrow({ where: { id: "cv-test" } });
     expect(saved).toMatchObject({
       assignee: "human",
-      assignedUserName: "Você",
+      assignedUserName: "Ana Teste",
       status: "open",
       unreadCount: 0,
     });
@@ -38,7 +38,7 @@ describe("comandos do operador", () => {
   it("devolver para a IA remove o responsável humano", async () => {
     await createConversation({ assignee: "human" });
 
-    await runConversationCommand("cv-test", { type: "returnToAi" }, WS);
+    await runConversationCommand("cv-test", { type: "returnToAi" }, WS, "Ana Teste");
 
     const saved = await prisma.conversation.findUniqueOrThrow({ where: { id: "cv-test" } });
     expect(saved.assignee).toBe("ai");
@@ -48,9 +48,9 @@ describe("comandos do operador", () => {
   it("não altera conversa de outro workspace (isolamento)", async () => {
     await createConversation({ workspaceId: "ws-outro" });
 
-    await expect(runConversationCommand("cv-test", { type: "takeOver" }, WS)).rejects.toThrow(
-      ConversationRuleError,
-    );
+    await expect(
+      runConversationCommand("cv-test", { type: "takeOver" }, WS, "Ana Teste"),
+    ).rejects.toThrow(ConversationRuleError);
     const saved = await prisma.conversation.findUniqueOrThrow({ where: { id: "cv-test" } });
     expect(saved.assignee).toBe("ai");
   });
@@ -96,7 +96,7 @@ describe("atendimentos (métricas)", () => {
   it("resolver registra o atendimento com o tempo da 1ª resposta", async () => {
     await createConversation({ assignee: "ai", withLead: true });
 
-    await runConversationCommand("cv-test", { type: "resolve" }, WS);
+    await runConversationCommand("cv-test", { type: "resolve" }, WS, "Ana Teste");
 
     const attendance = await prisma.attendance.findUniqueOrThrow({
       where: { conversationId: "cv-test" },
@@ -111,11 +111,11 @@ describe("atendimentos (métricas)", () => {
   it("resolver duas vezes não duplica; reabrir remove o registro", async () => {
     await createConversation();
 
-    await runConversationCommand("cv-test", { type: "resolve" }, WS);
-    await runConversationCommand("cv-test", { type: "resolve" }, WS);
+    await runConversationCommand("cv-test", { type: "resolve" }, WS, "Ana Teste");
+    await runConversationCommand("cv-test", { type: "resolve" }, WS, "Ana Teste");
     expect(await prisma.attendance.count({ where: { conversationId: "cv-test" } })).toBe(1);
 
-    await runConversationCommand("cv-test", { type: "reopen" }, WS);
+    await runConversationCommand("cv-test", { type: "reopen" }, WS, "Ana Teste");
     expect(await prisma.attendance.count({ where: { conversationId: "cv-test" } })).toBe(0);
   });
 });

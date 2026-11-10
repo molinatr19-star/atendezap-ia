@@ -10,25 +10,33 @@ import {
   sendOperatorMessage,
 } from "@/server/services/conversationService";
 import { receiveContactMessage } from "@/server/services/inboundService";
+import { getActionUser, type CurrentUser } from "@/server/session";
 
 /**
- * Server Actions das conversas. Argumentos vêm do navegador: tratados como não confiáveis
- * e validados aqui. Ainda sem login, todas agem no workspace de demonstração.
+ * Server Actions das conversas. São endpoints públicos (POST): cada uma valida a sessão no
+ * servidor e age SOMENTE no workspace do usuário logado. Argumentos do navegador são validados.
  */
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
+const SESSION_EXPIRED: ActionResult = {
+  ok: false,
+  error: "Sua sessão expirou. Entre novamente para continuar.",
+};
+
 const conversationIdSchema = z.string().trim().min(1).max(64);
 
-async function execute(task: () => Promise<void>): Promise<ActionResult> {
+/** Exige usuário logado, executa a tarefa e atualiza a tela com os dados do banco. */
+async function execute(task: (user: CurrentUser) => Promise<void>): Promise<ActionResult> {
+  const user = await getActionUser();
+  if (!user) return SESSION_EXPIRED;
   try {
-    await task();
-    // Atualiza a rota atual (lista no layout + conversa aberta) com os dados do banco.
+    await task(user);
     refresh();
     return { ok: true };
   } catch (error) {
     if (error instanceof ConversationRuleError) return { ok: false, error: error.message };
-    console.error("Falha em ação de conversa:", error);
+    console.error("Falha em ação de conversa:", error instanceof Error ? error.name : error);
     return { ok: false, error: "Não foi possível concluir a ação. Tente novamente." };
   }
 }
@@ -37,7 +45,9 @@ function command(type: ConversationCommand["type"]) {
   return async (conversationId: unknown): Promise<ActionResult> => {
     const id = conversationIdSchema.safeParse(conversationId);
     if (!id.success) return { ok: false, error: "Conversa inválida." };
-    return execute(() => runConversationCommand(id.data, { type } as ConversationCommand));
+    return execute((user) =>
+      runConversationCommand(id.data, { type } as ConversationCommand, user.workspaceId, user.name),
+    );
   };
 }
 
@@ -67,7 +77,7 @@ export async function sendConversationMessage(
 ): Promise<ActionResult> {
   const id = conversationIdSchema.safeParse(conversationId);
   if (!id.success || typeof text !== "string") return { ok: false, error: "Dados inválidos." };
-  return execute(() => sendOperatorMessage(id.data, text));
+  return execute((user) => sendOperatorMessage(id.data, text, user.workspaceId));
 }
 
 /**
@@ -83,7 +93,7 @@ export async function simulateContactMessage(
   }
   const id = conversationIdSchema.safeParse(conversationId);
   if (!id.success || typeof text !== "string") return { ok: false, error: "Dados inválidos." };
-  return execute(async () => {
-    await receiveContactMessage(id.data, text);
+  return execute(async (user) => {
+    await receiveContactMessage(id.data, text, user.workspaceId);
   });
 }

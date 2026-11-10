@@ -1,4 +1,3 @@
-import { DEMO_WORKSPACE_ID } from "@/config/workspace";
 import { getAgentEngine, getAiConfig, type AgentToolCall, type ChatTurn } from "@/lib/ai";
 import { buildSystemPrompt } from "@/lib/ai/prompts/systemPrompt";
 import { agentRepository, type AgentSettings } from "@/server/repositories/agentRepository";
@@ -18,7 +17,7 @@ export type AgentReplyOutcome =
  */
 export async function runAgentReply(
   conversationId: string,
-  workspaceId: string = DEMO_WORKSPACE_ID,
+  workspaceId: string,
 ): Promise<AgentReplyOutcome> {
   const [settings, detail, stages, businessName] = await Promise.all([
     agentRepository.getSettings(workspaceId),
@@ -99,7 +98,7 @@ export async function runAgentReply(
 
 // ---------- Configuração do agente (tela /agentes) ----------
 
-export async function getAgentSettings(workspaceId: string = DEMO_WORKSPACE_ID) {
+export async function getAgentSettings(workspaceId: string) {
   const [settings, ai] = await Promise.all([
     agentRepository.getSettings(workspaceId),
     Promise.resolve(getAiConfig()),
@@ -111,9 +110,6 @@ export async function getAgentSettings(workspaceId: string = DEMO_WORKSPACE_ID) 
   };
 }
 
-export async function saveAgentSettings(
-  data: AgentSettings,
-  workspaceId: string = DEMO_WORKSPACE_ID,
-): Promise<void> {
+export async function saveAgentSettings(data: AgentSettings, workspaceId: string): Promise<void> {
   await agentRepository.saveSettings(workspaceId, data);
 }

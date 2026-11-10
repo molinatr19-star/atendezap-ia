@@ -5,15 +5,15 @@ test.describe("Agente de IA (motor simulado)", () => {
     await page.goto("/conversas/cv-01");
     await expect(page.getByRole("heading", { name: "Mariana Alves" })).toBeVisible();
 
+    // Texto único por execução: a conversa pode já ter mensagens de execuções anteriores.
+    const request = `Prefiro falar com um atendente, por favor (${Date.now()})`;
     await page.getByText(/Simular mensagem de Mariana/).click();
-    await page
-      .getByRole("textbox", { name: "Mensagem do contato" })
-      .fill("Prefiro falar com um atendente, por favor");
+    await page.getByRole("textbox", { name: "Mensagem do contato" }).fill(request);
     await page.getByRole("button", { name: "Enviar como contato" }).click();
 
     const log = page.getByRole("log");
-    await expect(log.getByText("Prefiro falar com um atendente, por favor")).toBeVisible();
-    await expect(log.getByText(/Vou chamar alguém da nossa equipe/)).toBeVisible();
+    await expect(log.getByText(request)).toBeVisible();
+    await expect(log.getByText(/Vou chamar alguém da nossa equipe/).last()).toBeVisible();
     await expect(page.getByText("Transferida pela IA:")).toBeVisible();
     await expect(page.getByRole("button", { name: "Devolver para IA" })).toBeVisible();
   });

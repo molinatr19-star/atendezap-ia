@@ -4,6 +4,7 @@ import { ConversationList } from "@/components/chat/ConversationList";
 import { ConversationListSkeleton } from "@/components/chat/ConversationListSkeleton";
 import { listConversationSummaries } from "@/server/services/conversationService";
 import { getRequestTime } from "@/server/requestTime";
+import { requireUser } from "@/server/session";
 
 /**
  * Caixa de entrada em duas colunas: lista (persistente entre conversas) + conversa aberta.
@@ -29,7 +30,8 @@ export default function ConversasLayout({ children }: LayoutProps<"/conversas">)
 }
 
 async function InboxList() {
+  const user = await requireUser();
   const now = await getRequestTime();
-  const summaries = await listConversationSummaries();
+  const summaries = await listConversationSummaries(user.workspaceId);
   return <ConversationList summaries={summaries} now={now} />;
 }

@@ -44,65 +44,79 @@ const FIELDS: { name: FieldName; label: string; hint: string; rows?: number; max
 
 const initialState: AgentFormState = { status: "idle" };
 
-export function AgentSettingsForm({ initial }: { initial: AgentFormValues }) {
+export function AgentSettingsForm({
+  initial,
+  readOnly = false,
+}: {
+  initial: AgentFormValues;
+  /** Atendentes veem a configuração, mas só dono/admin alteram (o servidor também bloqueia). */
+  readOnly?: boolean;
+}) {
   const [state, formAction, isPending] = useActionState(saveAgentAction, initialState);
   const baseId = useId();
 
   return (
     <form action={formAction} className="flex flex-col gap-5" noValidate>
-      {FIELDS.map((field) => {
-        const id = `${baseId}-${field.name}`;
-        const error = state.fieldErrors?.[field.name];
-        const common = {
-          id,
-          name: field.name,
-          defaultValue: initial[field.name],
-          maxLength: field.max,
-          "aria-invalid": error ? true : undefined,
-          "aria-describedby": `${id}-hint${error ? ` ${id}-error` : ""}`,
-          className: cn(
-            "w-full rounded-lg border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground",
-            error && "border-danger",
-          ),
-        };
-        return (
-          <div key={field.name} className="flex flex-col gap-1.5">
-            <label htmlFor={id} className="text-sm font-medium">
-              {field.label}
-            </label>
-            {field.rows ? (
-              <textarea
-                {...common}
-                rows={field.rows}
-                className={cn(common.className, "resize-y")}
-              />
-            ) : (
-              <input {...common} type="text" />
-            )}
-            <p id={`${id}-hint`} className="text-xs text-muted-foreground">
-              {field.hint}
-            </p>
-            {error ? (
-              <p id={`${id}-error`} className="text-xs text-danger">
-                {error}
+      {readOnly ? (
+        <p className="rounded-lg border bg-muted px-3 py-2 text-sm text-muted-foreground">
+          Somente leitura: apenas administradores podem alterar o agente.
+        </p>
+      ) : null}
+      <fieldset disabled={readOnly} className="flex flex-col gap-5">
+        {FIELDS.map((field) => {
+          const id = `${baseId}-${field.name}`;
+          const error = state.fieldErrors?.[field.name];
+          const common = {
+            id,
+            name: field.name,
+            defaultValue: initial[field.name],
+            maxLength: field.max,
+            "aria-invalid": error ? true : undefined,
+            "aria-describedby": `${id}-hint${error ? ` ${id}-error` : ""}`,
+            className: cn(
+              "w-full rounded-lg border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground",
+              error && "border-danger",
+            ),
+          };
+          return (
+            <div key={field.name} className="flex flex-col gap-1.5">
+              <label htmlFor={id} className="text-sm font-medium">
+                {field.label}
+              </label>
+              {field.rows ? (
+                <textarea
+                  {...common}
+                  rows={field.rows}
+                  className={cn(common.className, "resize-y")}
+                />
+              ) : (
+                <input {...common} type="text" />
+              )}
+              <p id={`${id}-hint`} className="text-xs text-muted-foreground">
+                {field.hint}
               </p>
-            ) : null}
-          </div>
-        );
-      })}
+              {error ? (
+                <p id={`${id}-error`} className="text-xs text-danger">
+                  {error}
+                </p>
+              ) : null}
+            </div>
+          );
+        })}
 
-      <label className="flex items-center gap-3 text-sm">
-        <input
-          type="checkbox"
-          name="active"
-          defaultChecked={initial.active}
-          className="size-4 accent-(--primary)"
-        />
-        Agente ativo (responde automaticamente as conversas conduzidas pela IA)
-      </label>
+        <label className="flex items-center gap-3 text-sm">
+          <input
+            type="checkbox"
+            name="active"
+            defaultChecked={initial.active}
+            className="size-4 accent-(--primary)"
+          />
+          Agente ativo (responde automaticamente as conversas conduzidas pela IA)
+        </label>
+      </fieldset>
 
       <div className="flex flex-wrap items-center gap-3 border-t pt-5">
-        <Button type="submit" disabled={isPending}>
+        <Button type="submit" disabled={isPending || readOnly}>
           {isPending ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : null}
           Salvar configuração
         </Button>

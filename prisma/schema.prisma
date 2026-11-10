@@ -11,6 +11,7 @@ datasource db {
 }
 
 // No PostgreSQL os enums são tipos nativos: o próprio banco rejeita valores inválidos.
+
 enum ConversationStatus {
   open
   pending
@@ -52,9 +53,11 @@ model Workspace {
   leads          Lead[]
   attendances    Attendance[]
   aiAgent        AiAgent?
+  users          User[]
 }
 
 /// Configuração do agente de IA do workspace (tela /agentes). Um agente por workspace.
+
 model AiAgent {
   id           String   @id @default(cuid())
   workspaceId  String   @unique
@@ -174,6 +177,7 @@ model Lead {
 
 /// Atendimento encerrado: base das métricas do dashboard.
 /// Registros históricos do seed não têm conversa vinculada.
+
 model Attendance {
   id                   String   @id @default(cuid())
   workspaceId          String
@@ -188,4 +192,72 @@ model Attendance {
   conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId, startedAt])
+}
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  workspaceId   String
+  /// owner | admin | agent (validado pelo Better Auth; String para compatibilidade com o CLI)
+  role          String    @default("agent")
+  sessions      Session[]
+  accounts      Account[]
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([email])
+  @@index([workspaceId])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
 }

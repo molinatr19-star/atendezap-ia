@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 
 import { agentSettingsSchema } from "@/features/agentes/agentSchema";
 import { saveAgentSettings } from "@/server/services/agentService";
+import { canManageWorkspace, getActionUser } from "@/server/session";
 
 export type AgentFormState = {
   status: "idle" | "saved" | "error";
@@ -16,6 +17,13 @@ export async function saveAgentAction(
   _previous: AgentFormState,
   formData: FormData,
 ): Promise<AgentFormState> {
+  const user = await getActionUser();
+  if (!user) return { status: "error", message: "Sua sessão expirou. Entre novamente." };
+  // Controle de acesso: só dono e administradores alteram o comportamento da IA.
+  if (!canManageWorkspace(user)) {
+    return { status: "error", message: "Apenas administradores podem alterar o agente." };
+  }
+
   const parsed = agentSettingsSchema.safeParse({
     name: formData.get("name"),
     persona: formData.get("persona"),
@@ -42,7 +50,7 @@ export async function saveAgentAction(
   }
 
   try {
-    await saveAgentSettings(parsed.data);
+    await saveAgentSettings(parsed.data, user.workspaceId);
   } catch (error) {
     console.error("Falha ao salvar agente:", error instanceof Error ? error.name : error);
     return { status: "error", message: "Não foi possível salvar. Tente novamente." };

@@ -37,6 +37,8 @@ jobs:
       # Credenciais do Postgres efêmero da CI (não são segredos).
       DATABASE_URL: postgresql://atendezap:atendezap_local@localhost:5432/atendezap?schema=public
       TEST_DATABASE_URL: postgresql://atendezap:atendezap_local@localhost:5432/atendezap_test?schema=public
+      # Segredo só da CI (banco efêmero, sem dados reais). Em produção, use um segredo do provedor.
+      BETTER_AUTH_SECRET: ci-only-secret-not-used-anywhere-else-0123456789
       NEXT_TELEMETRY_DISABLED: "1"
 
     steps:

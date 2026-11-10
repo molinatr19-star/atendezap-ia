@@ -26,18 +26,32 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
+    // Entra uma vez pela tela de login e salva a sessão (tests/e2e/auth.setup.ts).
+    { name: "setup", testMatch: /auth\.setup\.ts/ },
     {
       name: "desktop",
-      use: { ...devices["Desktop Chrome"], channel: isCI ? undefined : "msedge" },
+      dependencies: ["setup"],
+      use: {
+        ...devices["Desktop Chrome"],
+        channel: isCI ? undefined : "msedge",
+        storageState: "playwright/.auth/owner.json",
+      },
     },
   ],
   webServer: {
     // Na CI o build já foi feito no passo anterior.
     command: isCI ? `npm run start -- -p ${PORT}` : `npm run build && npm run start -- -p ${PORT}`,
-    url: `http://localhost:${PORT}/dashboard`,
+    url: `http://localhost:${PORT}/login`,
     timeout: 240_000,
     reuseExistingServer: false,
-    // Sem chave: o agente usa o motor simulado (testes não geram custo de API).
-    env: { DATABASE_URL: process.env.TEST_DATABASE_URL ?? "", ANTHROPIC_API_KEY: "" },
+    env: {
+      DATABASE_URL: process.env.TEST_DATABASE_URL ?? "",
+      // Sem chave: o agente usa o motor simulado (testes não geram custo de API).
+      ANTHROPIC_API_KEY: "",
+      BETTER_AUTH_URL: `http://localhost:${PORT}`,
+      // Vários logins em segundos dispararia o bloqueio de força bruta (que é o comportamento
+      // certo em produção). Desligado SÓ neste servidor de testes.
+      AUTH_RATE_LIMIT: "disabled",
+    },
   },
 });

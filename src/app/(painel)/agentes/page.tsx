@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { getNavItem } from "@/config/navigation";
-import { getRequestTime } from "@/server/requestTime";
+import { canManageWorkspace, requireUser } from "@/server/session";
 import { getAgentSettings } from "@/server/services/agentService";
 
 export const metadata: Metadata = { title: "Agentes de IA" };
@@ -33,8 +33,9 @@ export default function AgentesPage() {
 }
 
 async function AgentSettingsContent() {
-  await getRequestTime();
-  const { settings, engine } = await getAgentSettings();
+  const user = await requireUser();
+  const { settings, engine } = await getAgentSettings(user.workspaceId);
+  const canEdit = canManageWorkspace(user);
   const initial: AgentFormValues = settings ?? DEFAULTS;
 
   return (
@@ -47,7 +48,7 @@ async function AgentSettingsContent() {
           </p>
         </CardHeader>
         <CardContent>
-          <AgentSettingsForm initial={initial} />
+          <AgentSettingsForm initial={initial} readOnly={!canEdit} />
         </CardContent>
       </Card>
 

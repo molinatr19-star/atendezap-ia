@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { getNavItem } from "@/config/navigation";
 import { getRequestTime } from "@/server/requestTime";
+import { requireUser } from "@/server/session";
 import { getBoard } from "@/server/services/crmService";
 
 export const metadata: Metadata = { title: "CRM" };
@@ -23,8 +24,9 @@ export default function CrmPage() {
 }
 
 async function BoardContent() {
+  const user = await requireUser();
   const now = await getRequestTime();
-  const board = await getBoard();
+  const board = await getBoard(user.workspaceId);
   return <KanbanBoard board={board} now={now} />;
 }
 

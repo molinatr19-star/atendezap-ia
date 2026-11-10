@@ -4,6 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { CrmRuleError, moveLeadToStage } from "@/server/services/crmService";
+import { getActionUser } from "@/server/session";
 
 import type { ActionResult } from "./conversationActions";
 
@@ -19,10 +20,17 @@ export async function moveLeadAction(
   stageId: unknown,
   index: unknown,
 ): Promise<ActionResult> {
+  const user = await getActionUser();
+  if (!user) return { ok: false, error: "Sua sessão expirou. Entre novamente para continuar." };
   const parsed = moveSchema.safeParse({ leadId, stageId, index });
   if (!parsed.success) return { ok: false, error: "Movimento inválido." };
   try {
-    await moveLeadToStage(parsed.data.leadId, parsed.data.stageId, parsed.data.index);
+    await moveLeadToStage(
+      parsed.data.leadId,
+      parsed.data.stageId,
+      parsed.data.index,
+      user.workspaceId,
+    );
     refresh();
     return { ok: true };
   } catch (error) {
