@@ -44,97 +44,106 @@ async function main() {
   const inbox = buildDemoInbox(now);
   const history = generateAttendanceHistory(now);
 
-  await prisma.$transaction(async (tx) => {
-    await tx.workspace.create({ data: { id: DEMO_WORKSPACE_ID, name: DEMO_WORKSPACE_NAME } });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.workspace.create({ data: { id: DEMO_WORKSPACE_ID, name: DEMO_WORKSPACE_NAME } });
 
-    const stages = await Promise.all(
-      PIPELINE.map((name, position) =>
-        tx.pipelineStage.create({ data: { workspaceId: DEMO_WORKSPACE_ID, name, position } }),
-      ),
-    );
-    const stageByName = new Map(stages.map((stage) => [stage.name, stage.id]));
+      // Em sequência: uma transação usa uma única conexão; consultas em paralelo nela são inválidas.
+      const stageByName = new Map<string, string>();
+      for (const [position, name] of PIPELINE.entries()) {
+        const stage = await tx.pipelineStage.create({
+          data: { workspaceId: DEMO_WORKSPACE_ID, name, position },
+        });
+        stageByName.set(stage.name, stage.id);
+      }
 
-    for (const contact of inbox.contacts) {
-      await tx.contact.create({
-        data: {
-          id: contact.id,
-          workspaceId: DEMO_WORKSPACE_ID,
-          name: contact.name,
-          phoneE164: contact.phoneE164,
-          city: contact.city,
-          optIn: contact.optIn,
-          createdAt: new Date(contact.createdAt),
-          tags: {
-            connectOrCreate: contact.tags.map((name) => ({
-              where: { workspaceId_name: { workspaceId: DEMO_WORKSPACE_ID, name } },
-              create: { workspaceId: DEMO_WORKSPACE_ID, name },
-            })),
-          },
-        },
-      });
-    }
-
-    for (const conversation of inbox.conversations) {
-      const messages = inbox.messages.filter(
-        (message) => message.conversationId === conversation.id,
-      );
-      await tx.conversation.create({
-        data: {
-          id: conversation.id,
-          workspaceId: DEMO_WORKSPACE_ID,
-          contactId: conversation.contactId,
-          status: conversation.status,
-          assignee: conversation.assignee,
-          assignedUserName: conversation.assignedUserName,
-          unreadCount: conversation.unreadCount,
-          handoffReason: conversation.handoffReason,
-          lastMessageAt: new Date(conversation.lastMessageAt),
-          lastInboundAt: new Date(conversation.lastInboundAt),
-          createdAt: new Date(messages[0]?.createdAt ?? conversation.lastMessageAt),
-          messages: {
-            create: messages.map((message) => ({
-              direction: message.direction,
-              author: message.author,
-              content: message.content,
-              deliveryStatus: message.deliveryStatus,
-              createdAt: new Date(message.createdAt),
-            })),
-          },
-        },
-      });
-
-      // Lead no CRM para conversas com etapa definida.
-      const stageId = conversation.leadStage ? stageByName.get(conversation.leadStage) : undefined;
-      if (stageId) {
-        await tx.lead.create({
+      for (const contact of inbox.contacts) {
+        await tx.contact.create({
           data: {
+            id: contact.id,
             workspaceId: DEMO_WORKSPACE_ID,
-            contactId: conversation.contactId,
-            stageId,
-            valueCents: LEAD_VALUES[conversation.contactId],
+            name: contact.name,
+            phoneE164: contact.phoneE164,
+            city: contact.city,
+            optIn: contact.optIn,
+            createdAt: new Date(contact.createdAt),
+            tags: {
+              connectOrCreate: contact.tags.map((name) => ({
+                where: { workspaceId_name: { workspaceId: DEMO_WORKSPACE_ID, name } },
+                create: { workspaceId: DEMO_WORKSPACE_ID, name },
+              })),
+            },
           },
         });
       }
-    }
 
-    await tx.attendance.createMany({
-      data: history.map((record) => ({
-        workspaceId: DEMO_WORKSPACE_ID,
-        startedAt: new Date(record.startedAt),
-        resolvedAt: new Date(record.resolvedAt),
-        resolvedBy: record.resolvedBy,
-        firstResponseSeconds: record.firstResponseSeconds,
-        leadCreated: record.leadCreated,
-      })),
-    });
-  });
+      for (const conversation of inbox.conversations) {
+        const messages = inbox.messages.filter(
+          (message) => message.conversationId === conversation.id,
+        );
+        await tx.conversation.create({
+          data: {
+            id: conversation.id,
+            workspaceId: DEMO_WORKSPACE_ID,
+            contactId: conversation.contactId,
+            status: conversation.status,
+            assignee: conversation.assignee,
+            assignedUserName: conversation.assignedUserName,
+            unreadCount: conversation.unreadCount,
+            handoffReason: conversation.handoffReason,
+            lastMessageAt: new Date(conversation.lastMessageAt),
+            lastInboundAt: new Date(conversation.lastInboundAt),
+            createdAt: new Date(messages[0]?.createdAt ?? conversation.lastMessageAt),
+            messages: {
+              create: messages.map((message) => ({
+                direction: message.direction,
+                author: message.author,
+                content: message.content,
+                deliveryStatus: message.deliveryStatus,
+                createdAt: new Date(message.createdAt),
+              })),
+            },
+          },
+        });
 
+        // Lead no CRM para conversas com etapa definida.
+        const stageId = conversation.leadStage
+          ? stageByName.get(conversation.leadStage)
+          : undefined;
+        if (stageId) {
+          await tx.lead.create({
+            data: {
+              workspaceId: DEMO_WORKSPACE_ID,
+              contactId: conversation.contactId,
+              stageId,
+              valueCents: LEAD_VALUES[conversation.contactId],
+            },
+          });
+        }
+      }
+
+      await tx.attendance.createMany({
+        data: history.map((record) => ({
+          workspaceId: DEMO_WORKSPACE_ID,
+          startedAt: new Date(record.startedAt),
+          resolvedAt: new Date(record.resolvedAt),
+          resolvedBy: record.resolvedBy,
+          firstResponseSeconds: record.firstResponseSeconds,
+          leadCreated: record.leadCreated,
+        })),
+      });
+      // ~6 mil linhas: o limite padrão de 5 s de uma transação é curto demais para o seed.
+    },
+    { timeout: 60_000, maxWait: 10_000 },
+  );
+
+  const inWorkspace = { workspaceId: DEMO_WORKSPACE_ID };
   const counts = await Promise.all([
-    prisma.contact.count(),
-    prisma.conversation.count(),
-    prisma.message.count(),
-    prisma.lead.count(),
-    prisma.attendance.count(),
+    prisma.contact.count({ where: inWorkspace }),
+    prisma.conversation.count({ where: inWorkspace }),
+    prisma.message.count({ where: { conversation: inWorkspace } }),
+    prisma.lead.count({ where: inWorkspace }),
+    prisma.attendance.count({ where: inWorkspace }),
   ]);
   console.log(
     `Seed concluído: ${counts[0]} contatos, ${counts[1]} conversas, ${counts[2]} mensagens, ` +

@@ -4,18 +4,18 @@
 
 ## Entidades
 
-| Entidade | Campos principais | Observações |
-|---|---|---|
-| Workspace | id, name, plan, createdAt | Raiz do multi-tenant |
-| User | id, workspaceId, name, email, role | role: owner, admin, agent |
-| WhatsAppChannel | id, workspaceId, phoneNumberId, displayPhone, status | Um workspace pode ter vários números |
-| Contact | id, workspaceId, phoneE164, name, tags, optIn | Telefone sempre em E.164 |
-| Conversation | id, workspaceId, contactId, channelId, status, assignee, assignedUserId, lastMessageAt, windowExpiresAt | status: open, pending, resolved. assignee: ai, human |
-| Message | id, conversationId, externalId, direction, author, type, content, deliveryStatus, createdAt | externalId único (idempotência do webhook) |
-| Lead | id, workspaceId, contactId, stageId, value, ownerId, position | position ordena o card na coluna |
-| PipelineStage | id, workspaceId, name, order, color | Colunas do Kanban |
-| AiAgent | id, workspaceId, name, persona, instructions, model, temperature, handoffRules, active | Configurado em /agentes |
-| Tag | id, workspaceId, name, color | Aplicada a contatos e conversas |
+| Entidade        | Campos principais                                                                                       | Observações                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Workspace       | id, name, plan, createdAt                                                                               | Raiz do multi-tenant                                 |
+| User            | id, workspaceId, name, email, role                                                                      | role: owner, admin, agent                            |
+| WhatsAppChannel | id, workspaceId, phoneNumberId, displayPhone, status                                                    | Um workspace pode ter vários números                 |
+| Contact         | id, workspaceId, phoneE164, name, tags, optIn                                                           | Telefone sempre em E.164                             |
+| Conversation    | id, workspaceId, contactId, channelId, status, assignee, assignedUserId, lastMessageAt, windowExpiresAt | status: open, pending, resolved. assignee: ai, human |
+| Message         | id, conversationId, externalId, direction, author, type, content, deliveryStatus, createdAt             | externalId único (idempotência do webhook)           |
+| Lead            | id, workspaceId, contactId, stageId, value, ownerId, position                                           | position ordena o card na coluna                     |
+| PipelineStage   | id, workspaceId, name, order, color                                                                     | Colunas do Kanban                                    |
+| AiAgent         | id, workspaceId, name, persona, instructions, model, temperature, handoffRules, active                  | Configurado em /agentes                              |
+| Tag             | id, workspaceId, name, color                                                                            | Aplicada a contatos e conversas                      |
 
 ## Relacionamentos
 

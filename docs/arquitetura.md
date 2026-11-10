@@ -29,13 +29,13 @@ Eventos (nova mensagem, mudança de etapa) ──> painel: /conversas, /crm, /da
 
 ## Camadas
 
-| Camada | Pasta | Responsabilidade |
-|---|---|---|
-| Apresentação | `src/app`, `src/components` | Rotas, layouts e componentes |
-| Domínio de UI | `src/features`, `src/hooks` | Estado e lógica por módulo |
-| Aplicação | `src/server/services` | Casos de uso e regras de negócio |
-| Dados | `src/server/repositories`, `src/lib/db` | Persistência |
-| Integrações | `src/lib/ai`, `src/lib/whatsapp` | SDKs e APIs externas |
+| Camada        | Pasta                                   | Responsabilidade                 |
+| ------------- | --------------------------------------- | -------------------------------- |
+| Apresentação  | `src/app`, `src/components`             | Rotas, layouts e componentes     |
+| Domínio de UI | `src/features`, `src/hooks`             | Estado e lógica por módulo       |
+| Aplicação     | `src/server/services`                   | Casos de uso e regras de negócio |
+| Dados         | `src/server/repositories`, `src/lib/db` | Persistência                     |
+| Integrações   | `src/lib/ai`, `src/lib/whatsapp`        | SDKs e APIs externas             |
 
 ## Pontos em aberto
 

@@ -8,35 +8,35 @@ Projeto de **portfólio** inspirado em plataformas SaaS de atendimento automatiz
 
 Módulos previstos:
 
-| Módulo | Rota | Descrição |
-|---|---|---|
-| Autenticação | `/(auth)` | Login e cadastro do operador/empresa |
-| Dashboard | `/dashboard` | Métricas de atendimento (volume, tempo de resposta, conversão, resolução pela IA) |
-| Conversas | `/conversas` | Caixa de entrada estilo WhatsApp, com handoff IA para humano |
-| CRM (Kanban) | `/crm` | Funil de leads em colunas, atualizado em tempo real |
-| Agentes de IA | `/agentes` | Configuração de agentes: persona, instruções, base de conhecimento, horários |
-| Configurações | `/configuracoes` | Conexão WhatsApp, equipe, etiquetas, integrações |
-| Webhook | `/api/webhooks/whatsapp` | Recebimento de mensagens e status |
+| Módulo        | Rota                     | Descrição                                                                         |
+| ------------- | ------------------------ | --------------------------------------------------------------------------------- |
+| Autenticação  | `/(auth)`                | Login e cadastro do operador/empresa                                              |
+| Dashboard     | `/dashboard`             | Métricas de atendimento (volume, tempo de resposta, conversão, resolução pela IA) |
+| Conversas     | `/conversas`             | Caixa de entrada estilo WhatsApp, com handoff IA para humano                      |
+| CRM (Kanban)  | `/crm`                   | Funil de leads em colunas, atualizado em tempo real                               |
+| Agentes de IA | `/agentes`               | Configuração de agentes: persona, instruções, base de conhecimento, horários      |
+| Configurações | `/configuracoes`         | Conexão WhatsApp, equipe, etiquetas, integrações                                  |
+| Webhook       | `/api/webhooks/whatsapp` | Recebimento de mensagens e status                                                 |
 
 **Fase atual: Dashboard e Conversas persistidos em SQLite via Prisma** (ADR 0004; sem IA real, sem login, WhatsApp em modo simulado). CRM, Agentes e Configurações ainda são páginas provisórias. Não implementar lógica, telas ou integrações sem pedido explícito da Molina.
 
 ## 2. Stack
 
-| Camada | Tecnologia | Status |
-|---|---|---|
-| Framework | Next.js 16.4 (App Router, `cacheComponents`) + React 19.3 | instalado |
-| Linguagem | TypeScript em modo `strict` | instalado |
-| Estilo | Tailwind CSS 4 + componentes no padrão shadcn/ui (cva, clsx, tailwind-merge) | instalado |
-| Ícones | lucide-react | instalado |
-| Tema | `data-theme` no `<html>` + script inline (sem biblioteca) | instalado |
-| Gráficos | SVG próprio em `src/components/dashboard/` (ADR 0003); cores validadas pela skill `dataviz` | definido |
-| Kanban | dnd-kit | a confirmar |
-| Validação | Zod (entrada de API, formulários, variáveis de ambiente) | definido |
-| IA | Claude API (Anthropic SDK), modelo via variável de ambiente | definido |
-| WhatsApp | WhatsApp Cloud API oficial (Meta), com modo simulado | definido |
-| Banco de dados | SQLite (`prisma/dev.db`) + Prisma ORM 7.10.1 com `@prisma/adapter-better-sqlite3` (ADR 0004). Migrar para PostgreSQL ao publicar | instalado |
-| Tempo real | SSE, WebSocket ou Realtime do provedor do banco | a decidir |
-| Testes | Vitest (unidade) + Playwright (e2e) | a confirmar |
+| Camada         | Tecnologia                                                                                                                       | Status      |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| Framework      | Next.js 16.4 (App Router, `cacheComponents`) + React 19.3                                                                        | instalado   |
+| Linguagem      | TypeScript em modo `strict`                                                                                                      | instalado   |
+| Estilo         | Tailwind CSS 4 + componentes no padrão shadcn/ui (cva, clsx, tailwind-merge)                                                     | instalado   |
+| Ícones         | lucide-react                                                                                                                     | instalado   |
+| Tema           | `data-theme` no `<html>` + script inline (sem biblioteca)                                                                        | instalado   |
+| Gráficos       | SVG próprio em `src/components/dashboard/` (ADR 0003); cores validadas pela skill `dataviz`                                      | definido    |
+| Kanban         | dnd-kit                                                                                                                          | a confirmar |
+| Validação      | Zod (entrada de API, formulários, variáveis de ambiente)                                                                         | definido    |
+| IA             | Claude API (Anthropic SDK), modelo via variável de ambiente                                                                      | definido    |
+| WhatsApp       | WhatsApp Cloud API oficial (Meta), com modo simulado                                                                             | definido    |
+| Banco de dados | SQLite (`prisma/dev.db`) + Prisma ORM 7.10.1 com `@prisma/adapter-better-sqlite3` (ADR 0004). Migrar para PostgreSQL ao publicar | instalado   |
+| Tempo real     | SSE, WebSocket ou Realtime do provedor do banco                                                                                  | a decidir   |
+| Testes         | Vitest (unidade) + Playwright (e2e)                                                                                              | a confirmar |
 
 Itens "a decidir" ou "a confirmar" só mudam de status com uma ADR em [docs/decisoes/](docs/decisoes/).
 
@@ -150,19 +150,19 @@ Todas as entidades de negócio carregam `workspaceId`.
 
 ## 10. Comandos
 
-| Comando | Uso |
-|---|---|
-| `npm run dev` | Servidor de desenvolvimento (http://localhost:3000) |
-| `npm run build` | Build de produção |
-| `npm run start` | Servir o build |
-| `npm run typecheck` | Checagem de tipos (`tsc --noEmit`) |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier (ordena classes Tailwind) |
-| `npm run check` | typecheck + lint |
-| `npm run db:migrate` | Cria/aplica migração após mudar `prisma/schema.prisma` (dev) |
-| `npm run db:generate` | Regenera o Prisma Client |
-| `npm run db:seed` | Popula o banco só se estiver vazio (seguro) |
+| Comando                 | Uso                                                                      |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `npm run dev`           | Servidor de desenvolvimento (http://localhost:3000)                      |
+| `npm run build`         | Build de produção                                                        |
+| `npm run start`         | Servir o build                                                           |
+| `npm run typecheck`     | Checagem de tipos (`tsc --noEmit`)                                       |
+| `npm run lint`          | ESLint                                                                   |
+| `npm run format`        | Prettier (ordena classes Tailwind)                                       |
+| `npm run check`         | typecheck + lint                                                         |
+| `npm run db:migrate`    | Cria/aplica migração após mudar `prisma/schema.prisma` (dev)             |
+| `npm run db:generate`   | Regenera o Prisma Client                                                 |
+| `npm run db:seed`       | Popula o banco só se estiver vazio (seguro)                              |
 | `npm run db:reset-demo` | **Apaga** o workspace de demonstração e recria (só com pedido explícito) |
-| `npm run db:studio` | Interface visual do banco (Prisma Studio) |
+| `npm run db:studio`     | Interface visual do banco (Prisma Studio)                                |
 
 Rodar `npm run check` e `npm run build` antes de considerar uma etapa concluída.

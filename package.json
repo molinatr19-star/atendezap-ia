@@ -12,6 +12,11 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "npm run typecheck && npm run lint",
+    "test": "node scripts/vitest.mjs run",
+    "test:unit": "node scripts/vitest.mjs run --project unit",
+    "test:integration": "node scripts/vitest.mjs run --project integration",
+    "test:watch": "node scripts/vitest.mjs --project unit",
+    "test:e2e": "playwright test",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -34,8 +39,9 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/turbopack": "4.3.3",
-    "@types/node": "^20",
+    "@types/node": "^24.19.2",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -47,6 +53,7 @@
     "prisma": "7.10.1",
     "tailwindcss": "4.3.3",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.1.0"
   }
 }

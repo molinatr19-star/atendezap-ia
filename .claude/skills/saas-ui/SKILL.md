@@ -30,17 +30,20 @@ Toda tela ou bloco com dados trata: carregando (skeleton), vazio (mensagem + aç
 ## Telas específicas
 
 ### Conversas (`/conversas`)
+
 - Três colunas: lista de conversas | chat | painel do contato (recolhível).
 - Indicadores: não lidas, responsável (IA ou humano), etiqueta, tempo desde a última mensagem.
 - Composer com aviso quando a janela de 24 h expirou (só template).
 - Botão claro de "Assumir conversa" (handoff IA -> humano) e "Devolver para IA".
 
 ### CRM Kanban (`/crm`)
+
 - Colunas = `PipelineStage`; cards = `Lead` (nome, valor, responsável, etiquetas, última interação).
 - Arrastar e soltar com alternativa por teclado e por menu ("Mover para...").
 - Atualização otimista com reversão em caso de erro.
 
 ### Agentes (`/agentes`)
+
 - Formulário em seções: identidade, instruções, base de conhecimento, horário, regras de handoff.
 - Pré-visualização de conversa de teste ao lado.
 
