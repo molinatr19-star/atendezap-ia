@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils/cn";
 import type { ConversationDetail } from "@/types/domain";
 
 import { Composer } from "./Composer";
+import { ContactSimulator } from "./ContactSimulator";
 import { ContactPanel } from "./ContactPanel";
 import { AssigneeBadge, StatusBadge } from "./ConversationBadges";
 import { MessageList } from "./MessageList";
@@ -127,6 +128,12 @@ export function ConversationView({ detail, now }: ConversationViewProps) {
         ) : null}
 
         <MessageList messages={messages} now={now} />
+
+        <ContactSimulator
+          conversationId={conversation.id}
+          contactName={contact.name.split(" ")[0]}
+          aiActive={conversation.assignee === "ai" && !resolved}
+        />
 
         <Composer
           blockReason={sendBlockReason}

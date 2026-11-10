@@ -151,6 +151,83 @@ export const conversationRepository = {
     });
   },
 
+  /**
+   * Mensagem recebida do contato: renova a janela de 24 h e soma não lidas. Uma conversa
+   * resolvida volta a ficar aberta (e o atendimento anterior deixa de contar como encerrado).
+   */
+  async appendInboundMessage(
+    workspaceId: string,
+    conversationId: string,
+    content: string,
+    receivedAt: Date,
+    externalId?: string,
+  ): Promise<void> {
+    await prisma.$transaction(async (tx) => {
+      const current = await tx.conversation.findFirst({
+        where: { id: conversationId, workspaceId },
+        select: { status: true },
+      });
+      if (!current) throw new Error(`Conversa ${conversationId} não encontrada.`);
+      await tx.message.create({
+        data: {
+          conversationId,
+          externalId,
+          direction: "inbound",
+          author: "contact",
+          content,
+          createdAt: receivedAt,
+        },
+      });
+      await tx.conversation.update({
+        where: { id: conversationId },
+        data: {
+          lastInboundAt: receivedAt,
+          lastMessageAt: receivedAt,
+          unreadCount: { increment: 1 },
+          ...(current.status === "resolved" ? { status: "open" as const } : {}),
+        },
+      });
+      if (current.status === "resolved") {
+        await tx.attendance.deleteMany({ where: { conversationId } });
+      }
+    });
+  },
+
+  /** Resposta gerada pelo agente de IA. Não altera o responsável (a IA pode ter transferido). */
+  async appendAiMessage(
+    workspaceId: string,
+    conversationId: string,
+    content: string,
+    sentAt: Date,
+  ): Promise<void> {
+    await prisma.$transaction(async (tx) => {
+      const updated = await tx.conversation.updateMany({
+        where: { id: conversationId, workspaceId },
+        data: { lastMessageAt: sentAt },
+      });
+      if (updated.count === 0) throw new Error(`Conversa ${conversationId} não encontrada.`);
+      await tx.message.create({
+        data: {
+          conversationId,
+          direction: "outbound",
+          author: "ai",
+          content,
+          deliveryStatus: "sent",
+          createdAt: sentAt,
+        },
+      });
+    });
+  },
+
+  /** Handoff IA -> equipe: aguardando atendimento humano, com o motivo registrado. */
+  async handoffToHuman(workspaceId: string, conversationId: string, reason: string): Promise<void> {
+    const result = await prisma.conversation.updateMany({
+      where: { id: conversationId, workspaceId },
+      data: { assignee: "human", assignedUserName: null, status: "pending", handoffReason: reason },
+    });
+    if (result.count === 0) throw new Error(`Conversa ${conversationId} não encontrada.`);
+  },
+
   async listMessages(conversationId: string): Promise<Message[]> {
     const rows = await prisma.message.findMany({
       where: { conversationId },

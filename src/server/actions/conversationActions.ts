@@ -9,6 +9,7 @@ import {
   runConversationCommand,
   sendOperatorMessage,
 } from "@/server/services/conversationService";
+import { receiveContactMessage } from "@/server/services/inboundService";
 
 /**
  * Server Actions das conversas. Argumentos vêm do navegador: tratados como não confiáveis
@@ -67,4 +68,22 @@ export async function sendConversationMessage(
   const id = conversationIdSchema.safeParse(conversationId);
   if (!id.success || typeof text !== "string") return { ok: false, error: "Dados inválidos." };
   return execute(() => sendOperatorMessage(id.data, text));
+}
+
+/**
+ * Simulador (modo demonstração): registra uma mensagem como se o CONTATO tivesse escrito no
+ * WhatsApp e dispara o agente de IA, exatamente como o webhook real fará.
+ */
+export async function simulateContactMessage(
+  conversationId: unknown,
+  text: unknown,
+): Promise<ActionResult> {
+  if (process.env.WHATSAPP_MODE && process.env.WHATSAPP_MODE !== "mock") {
+    return { ok: false, error: "Simulador disponível apenas no modo de demonstração." };
+  }
+  const id = conversationIdSchema.safeParse(conversationId);
+  if (!id.success || typeof text !== "string") return { ok: false, error: "Dados inválidos." };
+  return execute(async () => {
+    await receiveContactMessage(id.data, text);
+  });
 }

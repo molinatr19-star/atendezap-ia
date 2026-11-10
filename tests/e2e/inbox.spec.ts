@@ -35,8 +35,13 @@ test.describe("Caixa de entrada", () => {
     await page.goto("/conversas");
     const list = page.getByRole("list", { name: "Lista de conversas" });
 
-    await page.getByRole("button", { name: /Com a IA/ }).click();
-    await expect(list.getByText("Mariana Alves")).toBeVisible();
+    // Usa conversas que nenhum outro teste altera (testes não dependem da ordem de execução).
+    await page.getByRole("button", { name: /Com a equipe/ }).click();
+    await expect(list.getByText("Rafael Souza")).toBeVisible();
+    await expect(list.getByText("Thiago Nunes")).toHaveCount(0);
+
+    await page.getByRole("button", { name: /Resolvidas/ }).click();
+    await expect(list.getByText("Thiago Nunes")).toBeVisible();
     await expect(list.getByText("Rafael Souza")).toHaveCount(0);
 
     await page.getByRole("button", { name: /Abertas/ }).click();

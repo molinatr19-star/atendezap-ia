@@ -33,7 +33,8 @@ export default defineConfig({
           include: ["tests/integration/**/*.int.test.ts"],
           globalSetup: ["tests/integration/globalSetup.ts"],
           // O Prisma Client lê DATABASE_URL: aqui ele aponta para o banco de teste.
-          env: { DATABASE_URL: process.env.TEST_DATABASE_URL ?? "" },
+          // Testes nunca chamam a Claude API real (custo): chave vazia força o motor simulado.
+          env: { DATABASE_URL: process.env.TEST_DATABASE_URL ?? "", ANTHROPIC_API_KEY: "" },
           fileParallelism: false,
           hookTimeout: 60_000,
         },

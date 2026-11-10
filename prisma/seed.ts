@@ -25,12 +25,38 @@ const LEAD_VALUES: Record<string, number> = {
   "ct-08": 540_000,
 };
 
+/** Agente padrão da loja fictícia. Criado só se não existir (não sobrescreve edições na tela). */
+async function ensureDemoAgent(): Promise<boolean> {
+  const existing = await prisma.aiAgent.findUnique({ where: { workspaceId: DEMO_WORKSPACE_ID } });
+  if (existing) return false;
+  await prisma.aiAgent.create({
+    data: {
+      workspaceId: DEMO_WORKSPACE_ID,
+      name: "Aurora",
+      persona:
+        "Assistente da Casa Aurora: cordial, objetiva e prestativa. Trata o cliente pelo primeiro nome e evita gírias.",
+      instructions: [
+        "A Casa Aurora (empresa fictícia) faz móveis planejados: cozinhas, dormitórios, home office e salas.",
+        "Showroom: segunda a sexta, 9h às 18h; sábado, 9h às 14h. Endereço: Av. Exemplo, 1000 (fictício).",
+        "Visita técnica para medição é gratuita na Grande São Paulo; agende pedindo dia e período.",
+        "Orçamento: peça o ambiente e as medidas aproximadas. Não informe valores: a equipe envia a proposta.",
+        "Pagamento: até 10x sem juros no cartão (detalhes com a consultora).",
+      ].join("\n"),
+      handoffRules:
+        "Transfira quando o contato pedir um atendente, reclamar de entrega ou montagem, quiser negociar valores, cancelar, ou quando você não tiver a informação.",
+    },
+  });
+  return true;
+}
+
 async function main() {
   const reset = process.argv.includes("--reset");
   const existing = await prisma.workspace.findUnique({ where: { id: DEMO_WORKSPACE_ID } });
 
   if (existing && !reset) {
-    console.log("Banco já populado. Nada foi alterado.");
+    const created = await ensureDemoAgent();
+    console.log("Banco já populado. Dados existentes não foram alterados.");
+    if (created) console.log("Agente de IA padrão criado.");
     console.log("Para APAGAR os dados de demonstração e recriar: npm run db:reset-demo");
     return;
   }
@@ -137,6 +163,7 @@ async function main() {
     { timeout: 60_000, maxWait: 10_000 },
   );
 
+  await ensureDemoAgent();
   const inWorkspace = { workspaceId: DEMO_WORKSPACE_ID };
   const counts = await Promise.all([
     prisma.contact.count({ where: inWorkspace }),

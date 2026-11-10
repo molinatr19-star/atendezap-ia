@@ -51,6 +51,24 @@ model Workspace {
   pipelineStages PipelineStage[]
   leads          Lead[]
   attendances    Attendance[]
+  aiAgent        AiAgent?
+}
+
+/// Configuração do agente de IA do workspace (tela /agentes). Um agente por workspace.
+model AiAgent {
+  id           String   @id @default(cuid())
+  workspaceId  String   @unique
+  name         String
+  /// Quem o agente é e como fala (tom de voz).
+  persona      String
+  /// O que ele sabe e deve fazer: produtos, horários, políticas.
+  instructions String
+  /// Quando transferir para a equipe humana.
+  handoffRules String
+  active       Boolean  @default(true)
+  updatedAt    DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model Contact {

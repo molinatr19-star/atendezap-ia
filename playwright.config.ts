@@ -37,6 +37,7 @@ export default defineConfig({
     url: `http://localhost:${PORT}/dashboard`,
     timeout: 240_000,
     reuseExistingServer: false,
-    env: { DATABASE_URL: process.env.TEST_DATABASE_URL ?? "" },
+    // Sem chave: o agente usa o motor simulado (testes não geram custo de API).
+    env: { DATABASE_URL: process.env.TEST_DATABASE_URL ?? "", ANTHROPIC_API_KEY: "" },
   },
 });
