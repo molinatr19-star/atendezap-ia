@@ -1,0 +1,7 @@
+# Normaliza finais de linha (evita conflitos CRLF/LF no Windows)
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary

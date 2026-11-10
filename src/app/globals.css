@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+/* Tema escuro controlado pelo atributo data-theme no <html> (ver src/config/theme.ts). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Tokens de design. Componentes usam apenas estas cores (bg-background, text-muted-foreground...),
+ * nunca valores soltos. Pares texto/fundo pensados para contraste AA.
+ */
+:root,
+[data-theme="light"] {
+  --background: #f7f8f9;
+  --foreground: #111827;
+  --surface: #ffffff;
+  --surface-foreground: #111827;
+  --muted: #eef0f3;
+  --muted-foreground: #4b5563;
+  --border: #e2e5ea;
+  --ring: #047857;
+
+  --primary: #047857;
+  --primary-foreground: #ffffff;
+  --primary-soft: #e6f4ee;
+  --primary-soft-foreground: #065f46;
+
+  --success: #15803d;
+  --warning: #b45309;
+  --danger: #b91c1c;
+  --danger-foreground: #ffffff;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #374151;
+
+  /* Gráficos: par categórico validado (skill dataviz) contra a superfície #ffffff. */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-accent: #047857;
+  --chart-grid: #eceef2;
+  --chart-baseline: #c3c7cf;
+}
+
+[data-theme="dark"] {
+  --background: #0b0f14;
+  --foreground: #e5e7eb;
+  --surface: #121821;
+  --surface-foreground: #e5e7eb;
+  --muted: #1b2330;
+  --muted-foreground: #9ca3af;
+  --border: #253041;
+  --ring: #34d399;
+
+  --primary: #34d399;
+  --primary-foreground: #04261a;
+  --primary-soft: #0f2a22;
+  --primary-soft-foreground: #6ee7b7;
+
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --danger-foreground: #2a0a0a;
+
+  --sidebar: #0f141b;
+  --sidebar-foreground: #cbd5e1;
+
+  /* Passos escuros do mesmo par, validados contra a superfície #121821. */
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-accent: #34d399;
+  --chart-grid: #1e2733;
+  --chart-baseline: #344154;
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-foreground: var(--primary-soft-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-accent: var(--chart-accent);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-baseline: var(--chart-baseline);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  --radius-card: 0.75rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}

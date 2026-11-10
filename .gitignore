@@ -1,0 +1,54 @@
+# Dependências
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+
+# Build Next.js
+.next/
+out/
+build/
+next-env.d.ts
+*.tsbuildinfo
+
+# Testes
+coverage/
+playwright-report/
+test-results/
+
+# Variáveis de ambiente (manter apenas o exemplo)
+.env
+.env*.local
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Deploy
+.vercel
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+
+# Claude Code (configurações pessoais)
+.claude/settings.local.json
+
+# Certificados
+*.pem
+
+# Banco SQLite local e Prisma Client gerado
+prisma/*.db
+prisma/*.db-journal
+prisma/*.db-wal
+prisma/*.db-shm
+src/generated/
+.vscode/
