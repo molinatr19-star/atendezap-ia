@@ -1,6 +1,6 @@
 # Modelo de dados (rascunho conceitual)
 
-> Modelo conceitual. O schema implementado está em `prisma/schema.prisma` (ADR 0004). Diferenças: `User` e `WhatsAppChannel` ainda não existem (sem login e sem número real); foi criada a entidade `Attendance` (atendimento encerrado: início, fim, quem resolveu, tempo da 1ª resposta, se gerou lead), que alimenta o dashboard.
+> Modelo conceitual. O schema implementado está em `prisma/schema.prisma` (ADRs 0005 a 0007). Diferenças: `WhatsAppChannel` ainda não existe (sem número real); `User` segue o formato do Better Auth (com `workspaceId` e `role`); foram criadas `AiAgent` e `Attendance` (atendimento encerrado: início, fim, quem resolveu, tempo da 1ª resposta, se gerou lead), que alimenta o dashboard.
 
 ## Entidades
 
