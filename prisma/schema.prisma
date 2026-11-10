@@ -1,4 +1,4 @@
-// Schema do AtendeZap IA (Prisma ORM 7 + SQLite).
+// Schema do AtendeZap IA (Prisma ORM 7 + PostgreSQL).
 // Modelo conceitual em docs/modelo-de-dados.md. Toda entidade de negócio carrega workspaceId.
 
 generator client {
@@ -7,10 +7,10 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
-// SQLite guarda enums como texto (não valida no banco); o Prisma valida na aplicação.
+// No PostgreSQL os enums são tipos nativos: o próprio banco rejeita valores inválidos.
 enum ConversationStatus {
   open
   pending

@@ -1,0 +1,26 @@
+# PostgreSQL local para desenvolvimento e testes (ADR 0005).
+# Subir:  docker compose up -d      Parar: docker compose stop
+# Credenciais abaixo valem SÓ para a máquina local; nunca reutilizar em produção.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: atendezap-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: atendezap
+      POSTGRES_PASSWORD: atendezap_local
+      POSTGRES_DB: atendezap
+    ports:
+      - "5432:5432"
+    volumes:
+      - atendezap-pgdata:/var/lib/postgresql/data
+      # Cria o banco separado dos testes automatizados na primeira inicialização.
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atendezap -d atendezap"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  atendezap-pgdata:
